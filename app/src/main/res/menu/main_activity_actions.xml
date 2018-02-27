@@ -1,0 +1,16 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@+id/opt_progress"
+        android:showAsAction="always"
+        android:title=""
+        android:visibility="invisible"
+        />
+    <item
+        android:id="@+id/opt_about"
+        android:title="About"/>
+    <item
+        android:id="@+id/opt_exit"
+        android:title="Exit"/>
+
+</menu>
