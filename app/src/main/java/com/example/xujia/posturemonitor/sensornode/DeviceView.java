@@ -9,9 +9,12 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.example.xujia.posturemonitor.R;
+
+import org.w3c.dom.Text;
 
 // Fragment for Device View
 public class DeviceView extends Fragment {
@@ -20,7 +23,10 @@ public class DeviceView extends Fragment {
 
     // GUI
     private View view;
-    public TextView mBarometerValues;
+    public TextView mTextSensorData;
+    public TextView mTextSensorType;
+    public Button mButton;
+    public TextView mHeightValue;
     public boolean first = true;
 
     // House-keeping
@@ -37,8 +43,10 @@ public class DeviceView extends Fragment {
         mActivity = (DeviceActivity) getActivity();
 
         view = inflater.inflate(R.layout.fragment_device, container,false);
-        mBarometerValues = (TextView) view.findViewById(R.id.mBarometerText);
-        mBarometerValues.setText("Miao miao miao!");
+        mTextSensorData = (TextView) view.findViewById(R.id.sensor_data);
+        mTextSensorType = (TextView) view.findViewById(R.id.sensor_type);
+        mButton = (Button) view.findViewById(R.id.query_battery);
+        mHeightValue = (TextView) view.findViewById(R.id.height_value);
 
         // Notify activity that UI has been inflated
         mActivity.onViewInflated(view);

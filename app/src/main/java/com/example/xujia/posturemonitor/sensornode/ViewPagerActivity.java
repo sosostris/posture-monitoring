@@ -25,7 +25,7 @@ import java.util.List;
 
 public class ViewPagerActivity extends FragmentActivity {
 
-    // private static final String TAG = "ViewPagerActivity";
+    private static final String TAG = "ViewPagerActivity";
 
     // GUI
     protected static ViewPagerActivity mThis = null;
@@ -36,12 +36,9 @@ public class ViewPagerActivity extends FragmentActivity {
     private int mCurrentTab = 0;
     protected Menu optionsMenu;
     private MenuItem refreshItem;
-    protected boolean mBusy;
 
     public ViewPagerActivity() {
-        // Log.d(TAG, "construct");
         mThis = this;
-        mBusy = false;
         refreshItem = null;
     }
 
@@ -74,7 +71,6 @@ public class ViewPagerActivity extends FragmentActivity {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // Log.d(TAG, "onDestroy");
         mSectionsPagerAdapter = null;
     }
 
@@ -120,23 +116,22 @@ public class ViewPagerActivity extends FragmentActivity {
         dialog.show();
     }
 
-    protected void showBusyIndicator(final boolean busy) {
+    protected void showBusyIndicator(final boolean idle) {
         if (optionsMenu != null) {
             refreshItem = optionsMenu.findItem(R.id.opt_progress);
             if (refreshItem != null) {
-                if (!busy) {
+                if (!idle) {
                     refreshItem.setActionView(R.layout.frame_progress);
                 } else {
                     refreshItem.setActionView(null);
                 }
-                refreshItem.setVisible(!busy);
+                refreshItem.setVisible(!idle);
             } else {
                 // Log.e(TAG,"Refresh item not expanded");
             }
         } else {
             // Log.e(TAG,"Options not expanded");
         }
-        mBusy = busy;
     }
 
     // Create a tab listener that is called when the user changes tabs

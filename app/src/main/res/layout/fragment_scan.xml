@@ -21,6 +21,28 @@
         android:padding="3dp" />
 
     <Button
+        android:id="@+id/btn_stream"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fadingEdge="vertical"
+        android:gravity="center_horizontal|center"
+        android:linksClickable="false"
+        android:padding="10dp"
+        android:text="Start streaming data"
+        android:visibility="gone"/>
+
+    <Button
+        android:id="@+id/btn_connect_all"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fadingEdge="vertical"
+        android:gravity="center_horizontal|center"
+        android:linksClickable="false"
+        android:padding="10dp"
+        android:text="Connect all"
+        android:visibility="gone"/>
+
+    <Button
         android:id="@+id/btn_scan"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

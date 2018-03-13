@@ -4,62 +4,52 @@ package com.example.xujia.posturemonitor.sensornode;
  * Created by xujia on 2018-02-25.
  */
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
-import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.xujia.posturemonitor.R;
 import com.example.xujia.posturemonitor.common.BluetoothLeService;
 import com.example.xujia.posturemonitor.common.GattInfo;
-import com.example.xujia.posturemonitor.common.GenericBluetoothProfile;
-import com.example.xujia.posturemonitor.common.SensorTagGatt;
+
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 
-@SuppressLint("InflateParams") public class DeviceActivity extends ViewPagerActivity {
+@SuppressLint("InflateParams") public class DeviceActivity extends ViewPagerActivity implements SensorEventListener {
 
     // Log
     private static String TAG = "DeviceActivity";
 
     // Activity
     public static final String EXTRA_DEVICE = "EXTRA_DEVICE";
+    public static final String EXTRA_DEVICE_POSITION = "EXTRA_DEVICE_POSITION";
+    public static final String EXTRA_CHAR = "EXTRA_CHAR";
     private static final int PREF_ACT_REQ = 0;
     private static final int FWUPDATE_ACT_REQ = 1;
 
+    // GUI
     private DeviceView mDeviceView = null;
 
     // BLE
     private BluetoothLeService mBtLeService;
-    private BluetoothDevice mBluetoothDevice;
-    private BluetoothGatt mBtGatt;
-    private List<BluetoothGattService> mServiceList;
-    private boolean mServicesRdy = false;
+    private BluetoothDevice mDevice;
+    private int mDevicePosition;
     private boolean mIsReceiving = false;
-
-    // GUI
-    private List<GenericBluetoothProfile> mProfiles;
-
-    // Temp
-    private BluetoothGattCharacteristic mBarometerDataC;
-    private BluetoothGattCharacteristic mBarometerConfigC;
 
     public DeviceActivity() {
         mResourceFragmentPager = R.layout.fragment_pager;
@@ -80,19 +70,17 @@ import com.example.xujia.posturemonitor.common.SensorTagGatt;
 
         // BLE
         mBtLeService = BluetoothLeService.getInstance();
-        mBluetoothDevice = intent.getParcelableExtra(EXTRA_DEVICE);
-        mServiceList = new ArrayList<BluetoothGattService>();
+        mDevice = intent.getParcelableExtra(EXTRA_DEVICE);
+        mDevicePosition = intent.getIntExtra(EXTRA_DEVICE_POSITION, -1);
 
         // GUI
         mDeviceView = new DeviceView();
-        mSectionsPagerAdapter.addSection(mDeviceView, "Sensors");
-        mProfiles = new ArrayList<GenericBluetoothProfile>();
+        mSectionsPagerAdapter.addSection(mDeviceView, "Sensor data");
 
         // GATT database
         Resources res = getResources();
         XmlResourceParser xpp = res.getXml(R.xml.gatt_uuid);
         new GattInfo(xpp);
-
     }
 
     @Override
@@ -104,13 +92,8 @@ import com.example.xujia.posturemonitor.common.SensorTagGatt;
             mIsReceiving = false;
         }
 
-        for (GenericBluetoothProfile p : mProfiles) {
-            p.onPause();
-        }
-
         // View should be started again from scratch
         this.mDeviceView.first = true;
-        this.mProfiles = null;
         this.mDeviceView = null;
         finishActivity(PREF_ACT_REQ);
         finishActivity(FWUPDATE_ACT_REQ);
@@ -124,7 +107,6 @@ import com.example.xujia.posturemonitor.common.SensorTagGatt;
             registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
             mIsReceiving = true;
         }
-        this.mBtLeService.abortTimedDisconnect();
     }
 
     @Override
@@ -132,37 +114,85 @@ import com.example.xujia.posturemonitor.common.SensorTagGatt;
         // Log.d(TAG, "onPause");
         super.onPause();
     }
+
     private static IntentFilter makeGattUpdateIntentFilter() {
         final IntentFilter filter = new IntentFilter();
-        filter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
         filter.addAction(BluetoothLeService.ACTION_DATA_NOTIFY);
-        filter.addAction(BluetoothLeService.ACTION_DATA_WRITE);
         filter.addAction(BluetoothLeService.ACTION_DATA_READ);
         return filter;
     }
 
     void onViewInflated(View view) {
         Log.d(TAG, "Gatt view ready");
-
         // Set title bar to device name
-        setTitle(mBluetoothDevice.getName());
-
-        // Create GATT object
-        mBtGatt = BluetoothLeService.getBtGatt();
-
-        // Start service discovery
-        if (!mServicesRdy && mBtGatt != null) {
-            if (mBtLeService.getNumServices() == 0)
-                discoverServices();
-        }
-
-    }
-
-    private void discoverServices() {
-        if (mBtGatt.discoverServices()) {
-            mServiceList.clear();
+        setTitle(mDevice.getName() + " " + mDevice.getAddress());
+        if (mDevice.getAddress().equals(MainActivity.CC2650Addresses[0])) {
+            mDeviceView.mTextSensorType.setText("Humidity sensor");
+        } else if (mDevice.getAddress().equals(MainActivity.CC2650Addresses[1])) {
+            mDeviceView.mTextSensorType.setText("Barometer sensor");
+        } else if (mDevice.getAddress().equals(MainActivity.CC2650Addresses[2])) {
+            mDeviceView.mTextSensorType.setText("Giraffe");
+            mDeviceView.mButton.setVisibility(View.VISIBLE);
+            mDeviceView.mHeightValue.setVisibility(View.VISIBLE);
+            mDeviceView.mButton.setOnClickListener(v -> {
+                mBtLeService.getBtGatt(mDevicePosition).readCharacteristic(MainActivity.mBatteryC);
+            });
         }
     }
+
+    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(final Context context, Intent intent) {
+            final String action = intent.getAction();
+            final int status = intent.getIntExtra(BluetoothLeService.EXTRA_STATUS,
+                    BluetoothGatt.GATT_SUCCESS);
+
+            if (BluetoothLeService.ACTION_DATA_NOTIFY.equals(action)) {
+
+                // Notification
+                byte[] value = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
+                String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
+                // If it' barometer data from BLE113
+                if (uuidStr.contains("2aa3")) {
+                    // Get hPa (from BLE113 it is little endian order)
+                    byte[] reversedValue = new byte[4];
+                    reversedValue[0] = 0;
+                    reversedValue[1] = value[2];
+                    reversedValue[2] = value[1];
+                    reversedValue[3] = value[0];
+                    int correctData = byteToInt(reversedValue);
+                    int hPa = correctData / 4096;
+                    mDeviceView.mTextSensorData.setText("hPa: " + hPa);
+                    // Formula of hPa to height:
+                    int temprature = 70;
+                    double height = (Math.log((double) hPa * 100  / 101325)) * 287.053 * (temprature + 459.67) * 5 / 9 / -9.8;
+                    mDeviceView.mHeightValue.setText("Height above sea level: " + height);
+                } else {
+                    StringBuilder builder = new StringBuilder();
+                    for (int i=0; i<value.length; i++) {
+                        builder.append(value[i]);
+                        builder.append(" ");
+                    }
+                    mDeviceView.mTextSensorData.setText(builder.toString());
+                }
+
+                Log.d(TAG,"Got characteristic : " + uuidStr);
+
+            } else if (BluetoothLeService.ACTION_DATA_READ.equals(action)) {
+                byte[] value = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
+                String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
+                StringBuilder builder = new StringBuilder();
+                for (int i=0; i<value.length; i++) {
+                    builder.append(value[i]);
+                    builder.append(" ");
+                }
+                mDeviceView.mTextSensorData.setText(builder.toString());
+
+                Log.d(TAG,"Read characteristic : " + uuidStr);
+            }
+        }
+    };
 
     // Activity result handling
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -174,116 +204,22 @@ import com.example.xujia.posturemonitor.common.SensorTagGatt;
         }
     }
 
-    private void makeToast(String txt) {
-        Toast.makeText(this, txt, Toast.LENGTH_SHORT).show();
+    // Handles phone sensors
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+
     }
 
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
-    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
-        List <BluetoothGattService> serviceList;
-        List <BluetoothGattCharacteristic> charList = new ArrayList<BluetoothGattCharacteristic>();
+    }
 
-        @Override
-        public void onReceive(final Context context, Intent intent) {
-            final String action = intent.getAction();
-            final int status = intent.getIntExtra(BluetoothLeService.EXTRA_STATUS,
-                    BluetoothGatt.GATT_SUCCESS);
-
-            if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-                if (status == BluetoothGatt.GATT_SUCCESS) {
-
-                    mDeviceView.mBarometerValues.setText("Services discovered");
-
-                    serviceList = mBtLeService.getSupportedGattServices();
-                    if (serviceList.size() > 0) {
-                        for (int ii = 0; ii < serviceList.size(); ii++) {
-                            BluetoothGattService s = serviceList.get(ii);
-                            List<BluetoothGattCharacteristic> c = s.getCharacteristics();
-                            if (c.size() > 0) {
-                                for (int jj = 0; jj < c.size(); jj++) {
-                                    charList.add(c.get(jj));
-                                }
-                            }
-                        }
-                    }
-                    Log.d("DeviceActivity","Total characteristics " + charList.size());
-
-//                    for (BluetoothGattService service : serviceList) {
-//
-//                        // If service is Barometer
-//                        // if ((service.getUuid().toString().compareTo(SensorTagGatt.UUID_BAR_SERV.toString())) == 0) {
-//                        if ((service.getUuid().toString().compareTo("f000aa40-0451-4000-b000-000000000000")) == 0) {
-//                            List<BluetoothGattCharacteristic> barometerChars = service.getCharacteristics();
-//                            for (BluetoothGattCharacteristic c : barometerChars) {
-//                                // if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_DATA.toString())) {
-//                                if (c.getUuid().toString().equals("f000aa41-0451-4000-b000-000000000000")) {
-//                                    mBarometerDataC = c;
-//                                }
-//                                // if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_CONF.toString())) {
-//                                if (c.getUuid().toString().equals("f000aa42-0451-4000-b000-000000000000")) {
-//                                    mBarometerConfigC = c;
-//                                }
-//                            }
-//                            mBtGatt.setCharacteristicNotification(mBarometerDataC, true);
-//                            BluetoothGattDescriptor descriptor =
-//                                    mBarometerDataC.getDescriptor(GattInfo.CLIENT_CHARACTERISTIC_CONFIG);
-//                            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-//                            mBtGatt.writeDescriptor(descriptor);
-//                            mBtLeService.writeCharacteristic(mBarometerConfigC, (byte)0x01);
-//                            break;
-//                        }
-//                    }
-
-                    Thread worker = new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            for (BluetoothGattService service : serviceList) {
-
-                                // If service is Barometer
-                                // if ((service.getUuid().toString().compareTo(SensorTagGatt.UUID_BAR_SERV.toString())) == 0) {
-                                if ((service.getUuid().toString().compareTo("f000aa40-0451-4000-b000-000000000000")) == 0) {
-                                    List<BluetoothGattCharacteristic> barometerChars = service.getCharacteristics();
-                                    for (BluetoothGattCharacteristic c : barometerChars) {
-                                        // if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_DATA.toString())) {
-                                        if (c.getUuid().toString().equals("f000aa41-0451-4000-b000-000000000000")) {
-                                            mBarometerDataC = c;
-                                        }
-                                        // if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_CONF.toString())) {
-                                        if (c.getUuid().toString().equals("f000aa42-0451-4000-b000-000000000000")) {
-                                            mBarometerConfigC = c;
-                                        }
-                                    }
-                                    mBtLeService.setCharacteristicNotification(mBarometerDataC, true);
-                                    runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            Log.d(TAG, "Miao! " + mBtLeService.writeCharacteristic(mBarometerConfigC, (byte)0x01));
-
-                                        }
-                                    });
-                                    break;
-                                }
-                            }
-                        }
-                    });
-                    worker.start();
-                } else {
-                    Toast.makeText(getApplication(), "Service discovery failed",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-            } else if (BluetoothLeService.ACTION_DATA_NOTIFY.equals(action)) {
-
-                // Notification
-                byte[] value = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
-                String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
-
-                mDeviceView.mBarometerValues.setText(Byte.toString(value[0]));
-
-                Log.d("DeviceActivity","Got Characteristic : " + uuidStr);
-
-            }
+    private int byteToInt(byte[] bytes) {
+        int result = 0;
+        for (int i=0; i<4; i++) {
+            result = ( result << 8 ) + (int) bytes[i];
         }
-    };
-
+        return result;
+    }
 }

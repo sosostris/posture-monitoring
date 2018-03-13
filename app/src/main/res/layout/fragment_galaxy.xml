@@ -6,45 +6,43 @@
     android:orientation="vertical">
 
     <TextView
-        android:id="@+id/sensor_type"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"/>
+        android:text="Barometer"/>
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:text="From Sensornode:"/>
-
-    <TextView
-        android:id="@+id/sensor_data"
+        android:id="@+id/barometer_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
     <TextView
-        android:id="@+id/height_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:visibility="gone"/>
+        android:text="Magnetometer"/>
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:text="From phone:"/>
-
-    <TextView
-        android:id="@+id/sensor_phone_data"
+        android:id="@+id/magnetometer_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <Button
-        android:id="@+id/query_battery"
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="Query battery" />
+        android:text="Accelerometer"/>
+
+    <TextView
+        android:id="@+id/accel_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gyroscope"/>
+
+    <TextView
+        android:id="@+id/gyro_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
 
 </LinearLayout>

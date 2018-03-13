@@ -50,7 +50,7 @@
 
 
  **************************************************************************************************/
-package com.example.xujia.posturemonitor.common;
+package com.example.xujia.posturemonitor.sensornode;
 
 import static java.util.UUID.fromString;
 
