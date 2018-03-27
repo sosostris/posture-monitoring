@@ -14,8 +14,6 @@ import android.widget.TextView;
 
 import com.example.xujia.posturemonitor.R;
 
-import org.w3c.dom.Text;
-
 // Fragment for Device View
 public class DeviceView extends Fragment {
 
@@ -23,10 +21,13 @@ public class DeviceView extends Fragment {
 
     // GUI
     private View view;
-    public TextView mTextSensorData;
+    public TextView mBaroData;
+    public TextView mGyroData;
+    public TextView mAccelData;
+    public TextView mMagData;
+    public TextView mHpaValue;
     public TextView mTextSensorType;
-    public Button mButton;
-    public TextView mHeightValue;
+    public TextView mBatteryLevel;
     public boolean first = true;
 
     // House-keeping
@@ -43,10 +44,13 @@ public class DeviceView extends Fragment {
         mActivity = (DeviceActivity) getActivity();
 
         view = inflater.inflate(R.layout.fragment_device, container,false);
-        mTextSensorData = (TextView) view.findViewById(R.id.sensor_data);
+        mBaroData = (TextView) view.findViewById(R.id.baro_data);
+        mGyroData = (TextView) view.findViewById(R.id.gyro_data);
+        mAccelData = (TextView) view.findViewById(R.id.accel_data);
+        mMagData = (TextView) view.findViewById(R.id.mag_data);
+        mHpaValue = (TextView) view.findViewById(R.id.hPa_value);
         mTextSensorType = (TextView) view.findViewById(R.id.sensor_type);
-        mButton = (Button) view.findViewById(R.id.query_battery);
-        mHeightValue = (TextView) view.findViewById(R.id.height_value);
+        mBatteryLevel = (TextView) view.findViewById(R.id.battery_level);
 
         // Notify activity that UI has been inflated
         mActivity.onViewInflated(view);

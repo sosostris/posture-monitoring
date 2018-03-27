@@ -10,6 +10,7 @@ android {
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -20,12 +21,35 @@ android {
         targetCompatibility 1.8
         sourceCompatibility 1.8
     }
+
+//    defaultConfig {
+//        javaCompileOptions {
+//            annotationProcessorOptions {
+//                includeCompileClasspath = true
+//            }
+//        }
+//    }
+//
+//    packagingOptions {
+//        exclude 'META-INF/DEPENDENCIES'
+//        pickFirst 'google/protobuf/**'
+//        pickFirst 'META-INF/**'
+////        pickFirst 'google/protobuf/field_mask.proto'
+////        pickFirst 'google/protobuf/compiler/plugin.proto'
+////        pickFirst 'google/protobuf/duration.proto'
+////        pickFirst 'google/protobuf/type.proto'
+//    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support:appcompat-v7:26.1.0'
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'
+    implementation 'com.android.volley:volley:1.1.0'
+
+    // implementation 'com.google.cloud:google-cloud:0.40.0-alpha'
+    // compile group: 'com.google.cloud.bigtable', name:'bigtable-hbase-1.1', version: '1.0.0-pre3'
+
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'

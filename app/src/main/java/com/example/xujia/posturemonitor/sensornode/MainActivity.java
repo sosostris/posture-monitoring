@@ -17,6 +17,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.Volley;
 import com.example.xujia.posturemonitor.R;
 import com.example.xujia.posturemonitor.common.BleDeviceInfo;
 import com.example.xujia.posturemonitor.util.CustomToast;
@@ -30,6 +32,9 @@ public class MainActivity extends ViewPagerActivity {
     private final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 0;
     public final int NUMBER_OF_DEVICES = 2;
 
+    public static RequestQueue requestQueue;
+    public static String URL = "http://192.168.1.33:8000/handlePost";
+
     // GUI
     private static MainActivity mThis;
     private ScanView mScanView;
@@ -40,13 +45,10 @@ public class MainActivity extends ViewPagerActivity {
     public static BluetoothManager mBluetoothManager;
     public BluetoothAdapter mBtAdapter;
     private List<BleDeviceInfo> mDeviceInfoList;
-    public static final String[] CC2650Addresses = {"B0:B4:48:BC:53:87", "B0:B4:48:BD:0C:84", "00:07:80:2D:9E:F2"};
+    public static final String[] CC2650Addresses = {"B0:B4:48:BE:18:84", "B0:B4:48:BD:0C:84", "00:07:80:2D:9E:F2"};
 
     // Handle BluetoothAdapter state change
     private IntentFilter mFilter;
-
-    // Temp
-    public static BluetoothGattCharacteristic mBatteryC;
 
     public MainActivity() {
         mThis = this;
@@ -81,6 +83,8 @@ public class MainActivity extends ViewPagerActivity {
         // Register the BroadcastReceiver
         mFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
         this.registerReceiver(mReceiver, mFilter);
+
+        requestQueue = Volley.newRequestQueue(this);
 
     }
 
