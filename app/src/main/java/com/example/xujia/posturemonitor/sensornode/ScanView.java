@@ -58,7 +58,6 @@ import java.util.UUID;
 public class ScanView extends Fragment {
 
     private static String TAG = "ScanView";
-    private String giraffe = "00:07:80:2D:9E:F2";
 
     UUID notifyDescriptorUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
@@ -74,7 +73,7 @@ public class ScanView extends Fragment {
     TimerTask timerTask;
     final Handler handler = new Handler();
     boolean streaming;
-    public static String[] sensernodeIds;
+    public static String[] currentBatteryLevel;
     public static double[] currentAccelX;
     public static double[] currentAccelY;
     public static double[] currentAccelZ;
@@ -427,7 +426,7 @@ public class ScanView extends Fragment {
                     }
                     for (BluetoothGattService service : mServiceList) {
                         // If device is BLE113 sensornode
-                        if (address.equals(giraffe)) {
+                        if (address.equals(PostureMonitorApplication.DEVICE_ADDRESS_LIST[2])) {
                             if (!service.getUuid().toString().contains("1800")) {
                                 List<BluetoothGattCharacteristic> chars = service.getCharacteristics();
                                 for (BluetoothGattCharacteristic c : chars) {
@@ -502,12 +501,28 @@ public class ScanView extends Fragment {
                 String address = intent.getStringExtra(BluetoothLeService.EXTRA_ADDRESS);
                 int position = findPosition(address);
                 Log.d(TAG, "Got Characteristic : " + uuidStr + " " + address);
+
+                // CC2650 Sensortag
                 if (uuidStr.contains("aa41")) {
-                    currentBaro[position] = getPressureData(value);
+                    currentBaro[position] = getPressureDataCC2650(value);
                 } else if (uuidStr.contains("aa81")) {
-                    getGyroData(value, position);
-                    getAccelData(value, position);
-                    getMagData(value, position);
+                    getGyroDataCC2650(value, position);
+                    getAccelDataCC2650(value, position);
+                    getMagDataCC2650(value, position);
+
+                // BLE113 Sensornode
+                } else if (uuidStr.contains("8882")) {
+                    currentBaro[position] = getPressureDataBLE113(value);
+                } else if (uuidStr.contains("8884")) {
+                    getGyroDataBLE113(value, position);
+                } else if (uuidStr.contains("8886")) {
+                    getAccelDataBLE113(value, position);
+                } else if (uuidStr.contains("8888")) {
+                    getMagDataBLE113(value, position);
+                } else if (uuidStr.contains("2a19")) {
+                    String battery = buildString(value);
+                    currentBatteryLevel[position] = battery;
+                    Log.d(TAG,"Got characteristic from " + address + ": " + uuidStr + "battery level: " + buildString(value));
                 }
             } else if (BluetoothLeService.ACTION_DATA_WRITE.equals(action)) {
                 String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
@@ -536,9 +551,81 @@ public class ScanView extends Fragment {
     }
 
     // Barometer from CC2650 has 6 bytes; bytes 0-2 is temperature; bytes 3-5 is barometer
-    private double getPressureData(byte[] value) {
+    private double getPressureDataCC2650(byte[] value) {
         Integer rawValue = twentyFourBitUnsignedAtOffset(value, 3);
         return rawValue / 100f;
+    }
+
+    private double getPressureDataBLE113(byte[] value) {
+        // The data in BLE113 is stored in little endian order so we need to reverse order
+        byte[] valueInOrder = new byte[4];
+        valueInOrder[0] = 0;
+        for (int i=1; i<4; i++) {
+            valueInOrder[i] = value[3-i];
+        }
+        int correctData = byteToInt(valueInOrder);
+        int hPa = correctData / 4096;
+        return hPa;
+    }
+
+    private int byteToInt(byte[] bytes) {
+        int result = 0;
+        for (int i=0; i<4; i++) {
+            result = ( result << 8 ) + (int) bytes[i];
+        }
+        return result;
+    }
+
+    private void getGyroDataBLE113(byte[] value, int position) {
+        byte[] dataInOrder = getReversedBytes(value, 6);
+        int z = (dataInOrder[0] << 8) | dataInOrder[1];
+        int y = (dataInOrder[2] << 8) | dataInOrder[3];
+        int x = (dataInOrder[4] << 8) | dataInOrder[5];
+        // We use +/- 500 dps
+        currentGyroX[position] = (x * 1.0) * 1000 / 65536;
+        currentGyroY[position] = (y * 1.0) * 1000 / 65536;
+        currentGyroZ[position] = (z * 1.0) * 1000 / 65536;
+    }
+
+    private void getAccelDataBLE113(byte[] value, int position) {
+        byte[] dataInOrder = getReversedBytes(value, 6);
+        int z = (dataInOrder[0] << 8) | dataInOrder[1];
+        int y = (dataInOrder[2] << 8) | dataInOrder[3];
+        int x = (dataInOrder[4] << 8) | dataInOrder[5];
+        // We use +/- 4g
+        currentAccelX[position] = (x * 1.0) / 8192;
+        currentAccelY[position] = (y * 1.0) / 8192;
+        currentAccelZ[position] = (z * 1.0) / 8192;
+    }
+
+    private void getMagDataBLE113(byte[] value, int position) {
+        byte[] dataInOrder = getReversedBytes(value, 6);
+        int z = (dataInOrder[0] << 8) | dataInOrder[1];
+        int y = (dataInOrder[2] << 8) | dataInOrder[3];
+        int x = (dataInOrder[4] << 8) | dataInOrder[5];
+        // We use +/- 4g
+        // 1 Gauss = 100 mT
+        currentMagX[position] = x * 1.0 * 100 / 8192;
+        currentMagY[position] = y * 1.0 * 100 / 8192;
+        currentMagZ[position] = z * 1.0 * 100 / 8192;
+    }
+
+    // Returns data in
+    private byte[] getReversedBytes(byte[] bytes, int length) {
+        byte[] reversedBytes = new byte[length];
+        for (int i=0; i<length; i++) {
+            reversedBytes[i] = bytes[length-i-1];
+        }
+        return reversedBytes;
+    }
+
+    private String buildString(byte[] bytes) {
+        StringBuilder builder = new StringBuilder();
+        for (int i=0; i<bytes.length; i++) {
+            builder.append(bytes[i]);
+            builder.append(" ");
+        }
+        return builder.toString();
     }
 
     private Integer twentyFourBitUnsignedAtOffset(byte[] value, int offset) {
@@ -548,16 +635,16 @@ public class ScanView extends Fragment {
         return (upperByte << 16) + (mediumByte << 8) + lowerByte;
     }
 
-    private void getGyroData(byte[] value, int position) {
+    private void getGyroDataCC2650(byte[] value, int position) {
         int x = (value[1] << 8) + value[0];
-        currentGyroX[position] = (x * 1.0) / (65536 / 500);
+        currentGyroX[position] = (x * 1.0) * 500 / 65536;    // (x * 1.0) / (65536 / 500)
         int y = (value[3] << 8) + value[2];
-        currentGyroY[position] = (y * 1.0) / (65536 / 500);
+        currentGyroY[position] = (y * 1.0) * 500 / 65536;
         int z = (value[5] << 8) + value[4];
-        currentGyroZ[position] = (z * 1.0) / (65536 / 500);
+        currentGyroZ[position] = (z * 1.0) * 500 / 65536;
     }
 
-    private void getAccelData(byte[] value, int position) {
+    private void getAccelDataCC2650(byte[] value, int position) {
         int x = (value[7] << 8) + value[6];
         currentAccelX[position] = (x * 1.0) / 8192;    // 32768/4
         int y = (value[9] << 8) + value[8];
@@ -566,7 +653,7 @@ public class ScanView extends Fragment {
         currentAccelZ[position] = (z * 1.0) / 8192;
     }
 
-    private void getMagData(byte[] value, int position) {
+    private void getMagDataCC2650(byte[] value, int position) {
         int x = (value[13] << 8) + value[12];
         currentMagX[position] = x * 1.0;
         int y = (value[15] << 8) + value[14];
@@ -586,6 +673,16 @@ public class ScanView extends Fragment {
             timer.cancel();
             // timer.purge();
             timer = null;
+        }
+        try {
+            if (btOut != null) {
+                btOut.close();
+            }
+            if (btSocket != null) {
+                btSocket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -675,7 +772,7 @@ public class ScanView extends Fragment {
                                 continue;
                             }
                             try {
-                                jsonBody.put("SensornodeId", sensernodeIds[i]);
+                                jsonBody.put("SensornodeId", PostureMonitorApplication.DEVICE_NAME_LIST[i]);
                                 jsonBody.put("Timestamp", timestamp);
                                 jsonBody.put("Baro", currentBaro[i]);
                                 jsonBody.put("AccelX", currentAccelX[i]);
@@ -713,7 +810,7 @@ public class ScanView extends Fragment {
                             }
                             long timestamp = new Timestamp(System.currentTimeMillis()).getTime();
                             StringBuilder sb = new StringBuilder();
-                            sb.append(sensernodeIds[i] + " ");
+                            sb.append(PostureMonitorApplication.DEVICE_NAME_LIST[i] + " ");
                             sb.append(timestamp + " ");
                             sb.append(currentAccelX[i] + " ");
                             sb.append(currentAccelY[i] + " ");
@@ -748,7 +845,7 @@ public class ScanView extends Fragment {
         currentGyroY = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         currentGyroZ = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         currentBaro = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
-        sensernodeIds = new String[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentBatteryLevel = new String[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
             currentAccelX[i] = -8888;
             currentAccelY[i] = -8888;
@@ -760,7 +857,7 @@ public class ScanView extends Fragment {
             currentGyroY[i] = -8888;
             currentGyroZ[i] = -8888;
             currentBaro[i] = -8888;
-            sensernodeIds[i] = "SN000" + (i+1);
+            currentBatteryLevel[i] = "Unknown";
         }
     }
 

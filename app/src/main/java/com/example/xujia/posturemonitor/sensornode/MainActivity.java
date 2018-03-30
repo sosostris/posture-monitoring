@@ -10,7 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.icu.text.ScientificNumberFormatter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
@@ -20,7 +19,6 @@ import android.view.View;
 import android.widget.Toast;
 
 import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.Volley;
 import com.example.xujia.posturemonitor.R;
 import com.example.xujia.posturemonitor.common.BleDeviceInfo;
 import com.example.xujia.posturemonitor.util.CustomToast;
@@ -52,13 +50,13 @@ public class MainActivity extends ViewPagerActivity {
     public final static String ACTION_MAG = "com.example.xujia.posturemonitor.common.ACTION_MAG";
     public final static String ACTION_GYR = "com.example.xujia.posturemonitor.common.ACTION_GYR";
     public final static String ACTION_BAR = "com.example.xujia.posturemonitor.common.ACTION_BAR";
+    public final static String ACTION_BAT = "com.example.xujia.posturemonitor.common.ACTION_BAT";
 
     // BLE management
     private boolean mScanning = false;
     public static BluetoothManager mBluetoothManager;
     public BluetoothAdapter mBtAdapter;
     private List<BleDeviceInfo> mDeviceInfoList;
-    public static final String[] CC2650Addresses = {"B0:B4:48:BE:18:84", "B0:B4:48:BD:0C:84", "00:07:80:2D:9E:F2"};
 
     // Handle BluetoothAdapter state change
     private IntentFilter mFilter;
@@ -140,8 +138,8 @@ public class MainActivity extends ViewPagerActivity {
             runOnUiThread(new Runnable() {
                 public void run() {
                     if (!deviceInfoExists(device.getAddress())) {
-                        if (deviceIsCC2650(device)) {
-                            // New CC2650 device
+                        if (deviceIsSensornodeOrSensortag(device)) {
+                            // New sensornode or sensortag
                             BleDeviceInfo deviceInfo = createDeviceInfo(device, rssi, device.getAddress());
                             addDevice(deviceInfo);
                         }
@@ -173,9 +171,9 @@ public class MainActivity extends ViewPagerActivity {
         return false;
     }
 
-    private boolean deviceIsCC2650(BluetoothDevice device) {
+    private boolean deviceIsSensornodeOrSensortag(BluetoothDevice device) {
         String address = device.getAddress();
-        for (String deviceAddress : CC2650Addresses) {
+        for (String deviceAddress : PostureMonitorApplication.DEVICE_ADDRESS_LIST) {
             if (deviceAddress.equals(address)) {
                 return true;
             }
@@ -248,6 +246,7 @@ public class MainActivity extends ViewPagerActivity {
                         broadcastUpdate(ACTION_MAG, magData);
                         broadcastUpdate(ACTION_GYR, gyroData);
                         broadcastUpdate(ACTION_BAR, ScanView.currentBaro);
+                        broadcastUpdate(ACTION_BAT, ScanView.currentBatteryLevel);
                     }
                 });
             }
@@ -264,6 +263,11 @@ public class MainActivity extends ViewPagerActivity {
     private void broadcastUpdate(final String action, final double[] data) {
         final Intent intent = new Intent(action);
         // intent.putExtra(EXTRA_DATA, data);
+        sendBroadcast(intent);
+    }
+
+    private void broadcastUpdate(final String action, final String[] data) {
+        final Intent intent = new Intent(action);
         sendBroadcast(intent);
     }
 

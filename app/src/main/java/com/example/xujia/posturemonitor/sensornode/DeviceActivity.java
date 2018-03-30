@@ -192,6 +192,7 @@ import java.util.Date;
         filter.addAction(MainActivity.ACTION_MAG);
         filter.addAction(MainActivity.ACTION_GYR);
         filter.addAction(MainActivity.ACTION_BAR);
+        filter.addAction(MainActivity.ACTION_BAT);
         return filter;
     }
 
@@ -284,8 +285,10 @@ import java.util.Date;
             } else if (MainActivity.ACTION_GYR.equals(action)) {
                 mDeviceView.mGyroData.setText("x: "+ ScanView.currentGyroX[mDevicePosition] + "\ny: " +
                         ScanView.currentGyroY[mDevicePosition] + "\nz: " + ScanView.currentGyroZ[mDevicePosition] );
-            } else {
+            } else if (MainActivity.ACTION_BAR.equals(action)) {
                 mDeviceView.mBaroData.setText(Double.toString(ScanView.currentBaro[mDevicePosition]));
+            } else if (MainActivity.ACTION_BAT.equals(action)) {
+                mDeviceView.mBatteryLevel.setText(ScanView.currentBatteryLevel[mDevicePosition]);
             }
 
         }

@@ -85,35 +85,34 @@ public class GalaxySensorView extends Fragment implements SensorEventListener {
         mSensorManager.unregisterListener(this);
     }
 
-
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor == mBarometer) {
             mPressure = event.values[0];
-            if (mBarometerAccuracy == 1) {
+            // if (mBarometerAccuracy == 1) {
                 mBarometerValue.setText(Float.toString(mPressure));
-            }
+            // }
         } else if (event.sensor == mMagnetometer) {
             mMField[0] = event.values[0];
             mMField[1] = event.values[1];
             mMField[2] = event.values[2];
-            if (mMagnetometerAccuracy == 1) {
+            // if (mMagnetometerAccuracy == 1) {
                 mMagnetometerValue.setText(Arrays.toString(mMField));;
-            }
+             // }
         } else if (event.sensor == mAccelerometer) {
             mAcceleration[0] = event.values[0];
             mAcceleration[1] = event.values[1];
             mAcceleration[2] = event.values[2];
-            if (mAccelerometerAccuracy == 1) {
+            // if (mAccelerometerAccuracy == 1) {
                 mAccelValue.setText(Arrays.toString(mAcceleration));;
-            }
+            // }
         } else if (event.sensor == mGyroscope) {
             mGyrorate[0] = event.values[0];
             mGyrorate[1] = event.values[1];
             mGyrorate[2] = event.values[2];
-            if (mGyroScopeAccuracy == 1) {
+            // if (mGyroScopeAccuracy == 1) {
                 mGyroValue.setText(Arrays.toString(mGyrorate));;
-            }
+            // }
         }
     }
 
