@@ -9,7 +9,6 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import com.example.xujia.posturemonitor.R;
@@ -26,9 +25,8 @@ public class DeviceView extends Fragment {
     public TextView mAccelData;
     public TextView mMagData;
     public TextView mHpaValue;
-    public TextView mTextSensorType;
+    public TextView mSensornodeId;
     public TextView mBatteryLevel;
-    public boolean first = true;
 
     // House-keeping
     private DeviceActivity mActivity;
@@ -48,8 +46,7 @@ public class DeviceView extends Fragment {
         mGyroData = (TextView) view.findViewById(R.id.gyro_data);
         mAccelData = (TextView) view.findViewById(R.id.accel_data);
         mMagData = (TextView) view.findViewById(R.id.mag_data);
-        mHpaValue = (TextView) view.findViewById(R.id.hPa_value);
-        mTextSensorType = (TextView) view.findViewById(R.id.sensor_type);
+        mSensornodeId = (TextView) view.findViewById(R.id.sensornode_id);
         mBatteryLevel = (TextView) view.findViewById(R.id.battery_level);
 
         // Notify activity that UI has been inflated

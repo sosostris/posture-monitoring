@@ -6,15 +6,20 @@
     android:orientation="vertical">
 
     <TextView
-        android:id="@+id/sensor_type"
+        android:id="@+id/sensornode_id"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"/>
+        android:layout_margin="10dp"/>
+
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1dp"
+        android:background="#c0c0c0"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
+        android:layout_margin="10dp"
         android:text="Barometer raw data:"/>
 
     <TextView
@@ -22,17 +27,15 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <TextView
-        android:id="@+id/hPa_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="hPa: "
-        android:layout_marginBottom="10dp"/>
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1dp"
+        android:background="#c0c0c0"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
+        android:layout_margin="10dp"
         android:text="Gyroscope raw data:"/>
 
     <TextView
@@ -40,10 +43,15 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1dp"
+        android:background="#c0c0c0"/>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
+        android:layout_margin="10dp"
         android:text="Accelerometer raw data:"/>
 
     <TextView
@@ -51,10 +59,15 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1dp"
+        android:background="#c0c0c0"/>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
+        android:layout_margin="10dp"
         android:text="Magnetometer raw data:"/>
 
     <TextView
@@ -62,11 +75,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1dp"
+        android:background="#c0c0c0"/>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Battery percentage: "
-        android:layout_marginBottom="10dp"/>
+        android:layout_margin="10dp"/>
 
     <TextView
         android:id="@+id/battery_level"

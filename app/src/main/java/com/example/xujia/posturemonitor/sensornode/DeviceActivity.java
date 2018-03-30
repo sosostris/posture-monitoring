@@ -21,8 +21,6 @@ import android.util.Log;
 import android.view.View;
 import android.view.Window;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.Volley;
 import com.example.xujia.posturemonitor.R;
 import com.example.xujia.posturemonitor.common.BluetoothLeService;
 import com.example.xujia.posturemonitor.common.GattInfo;
@@ -40,17 +38,11 @@ import java.util.Date;
     private static String TAG = "DeviceActivity";
 
     // TCP connection with MATLAB
-    //private static final String host = "192.168.1.150";
-    //private static final String host = "194.47.32.167";
     private static final String host = "192.168.0.108";
     private static final int PORT = 30000;
     private Socket socket;
     private OutputStream os;
     private DataOutputStream dos;
-
-    // HTTP Client code
-    RequestQueue requestQueue;
-    String URL = "194.47.44.239";
 
     // Activity
     public static final String EXTRA_DEVICE = "EXTRA_DEVICE";
@@ -85,13 +77,11 @@ import java.util.Date;
         super.onCreate(savedInstanceState);
         Intent intent = getIntent();
 
-        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
-
-        // Http client
-        requestQueue = Volley.newRequestQueue(this);
+        // registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+        registerReceiver(mDataUpdateReceiver, makeDataUpdateIntentFilter());
 
         // BLE
-        mBtLeService = BluetoothLeService.getInstance();
+        // mBtLeService = BluetoothLeService.getInstance();
         mDevice = intent.getParcelableExtra(EXTRA_DEVICE);
         mDevicePosition = intent.getIntExtra(EXTRA_DEVICE_POSITION, -1);
 
@@ -123,14 +113,13 @@ import java.util.Date;
                 }
             }
         });
-        if (socket != null) {
-            matlabWorker.start();
-        }
+        matlabWorker.start();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        // Close MATLAB connection
         try {
             if (dos != null) {
                 dos.close();
@@ -142,13 +131,12 @@ import java.util.Date;
             e.printStackTrace();
         }
 
-        if (mIsReceiving) {
-            unregisterReceiver(mGattUpdateReceiver);
-            mIsReceiving = false;
-        }
+//        if (mIsReceiving) {
+//            unregisterReceiver(mGattUpdateReceiver);
+//            mIsReceiving = false;
+//        }
 
         // View should be started again from scratch
-        this.mDeviceView.first = true;
         this.mDeviceView = null;
         finishActivity(PREF_ACT_REQ);
         finishActivity(FWUPDATE_ACT_REQ);
@@ -158,10 +146,10 @@ import java.util.Date;
     protected void onResume() {
         // Log.d(TAG, "onResume");
         super.onResume();
-        if (!mIsReceiving) {
-            registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
-            mIsReceiving = true;
-        }
+//        if (!mIsReceiving) {
+//            registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+//            mIsReceiving = true;
+//        }
 
         if (socket != null) {
             try {
@@ -178,6 +166,7 @@ import java.util.Date;
     protected void onPause() {
         // Log.d(TAG, "onPause");
         super.onPause();
+        // Close MATLAB connection
         try {
             if (dos != null) {
                 dos.close();
@@ -190,10 +179,19 @@ import java.util.Date;
         }
     }
 
-    private static IntentFilter makeGattUpdateIntentFilter() {
+//    private static IntentFilter makeGattUpdateIntentFilter() {
+//        final IntentFilter filter = new IntentFilter();
+//        filter.addAction(BluetoothLeService.ACTION_DATA_NOTIFY);
+//        filter.addAction(BluetoothLeService.ACTION_DATA_READ);
+//        return filter;
+//    }
+
+    private static IntentFilter makeDataUpdateIntentFilter() {
         final IntentFilter filter = new IntentFilter();
-        filter.addAction(BluetoothLeService.ACTION_DATA_NOTIFY);
-        filter.addAction(BluetoothLeService.ACTION_DATA_READ);
+        filter.addAction(MainActivity.ACTION_ACC);
+        filter.addAction(MainActivity.ACTION_MAG);
+        filter.addAction(MainActivity.ACTION_GYR);
+        filter.addAction(MainActivity.ACTION_BAR);
         return filter;
     }
 
@@ -201,79 +199,95 @@ import java.util.Date;
         Log.d(TAG, "Gatt view ready");
         // Set title bar to device name
         setTitle(mDevice.getName() + " " + mDevice.getAddress());
-        if (mDevice.getAddress().equals(MainActivity.CC2650Addresses[0])) {
-            mDeviceView.mTextSensorType.setText("Humidity sensor");
-        } else if (mDevice.getAddress().equals(MainActivity.CC2650Addresses[1])) {
-            mDeviceView.mTextSensorType.setText("Barometer sensor");
-        } else if (mDevice.getAddress().equals(MainActivity.CC2650Addresses[2])) {
-            mDeviceView.mTextSensorType.setText("Giraffe");
-            // mBtLeService.getBtGatt(mDevicePosition).readCharacteristic(MainActivity.mBatteryC);
-        }
+        mDeviceView.mSensornodeId.setText(ScanView.sensernodeIds[mDevicePosition]);
+        // mBtLeService.getBtGatt(mDevicePosition).readCharacteristic(MainActivity.mBatteryC);
     }
 
-    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+//    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+//
+//        @Override
+//        public void onReceive(final Context context, Intent intent) {
+//            final String action = intent.getAction();
+//            final int status = intent.getIntExtra(BluetoothLeService.EXTRA_STATUS,
+//                    BluetoothGatt.GATT_SUCCESS);
+//
+//            if (BluetoothLeService.ACTION_DATA_NOTIFY.equals(action)) {
+//                // Notification
+//                byte[] value = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
+//                String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
+//
+//                // Battery level
+//                if (uuidStr.contains("2a19")) {
+//                    Date currentTime = Calendar.getInstance().getTime();
+//                    String currentBattery = currentTime + ": " + buildString(value);
+//                    batteryString = batteryString + " | " + currentBattery;
+//                    mDeviceView.mBatteryLevel.setText(batteryString);
+//                    Log.d(TAG,"Got characteristic : " + uuidStr + "battery level: " + buildString(value));
+//                }
+//
+//                // Barometer data
+//                if (uuidStr.contains("8882")) {
+//                    // Get hPa (from BLE113 it is little endian order)
+//                    byte[] correctBaroData = getCorrectBaroData(value);
+//                    int correctData = byteToInt(correctBaroData);
+//                    int hPa = correctData / 4096;
+//                    byte[] displayData = new byte[3];
+//                    for (int i=0; i<3; i++) {
+//                        displayData[i] = correctBaroData[i+1];
+//                    }
+//                    mDeviceView.mBaroData.setText(buildString(displayData));
+//                    mDeviceView.mHpaValue.setText("hPa: " + hPa);
+//                    // Gyroscope data
+//                } else if (uuidStr.contains("8884")) {
+//                    byte[] correctGyroData = getReversedBytes(value, 6);
+//                    mDeviceView.mGyroData.setText(buildString(correctGyroData));
+//                // Accelerometer data
+//                } else if (uuidStr.contains("8886")) {
+//                    byte[] correctAccelData = getReversedBytes(value, 6);
+//                    mDeviceView.mAccelData.setText(buildString(correctAccelData));
+//                    if (dos != null) {
+//                        try {
+//                            dos.write(correctAccelData, 0, 2);
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                //  Magnetometer data
+//                } else if (uuidStr.contains("8888")) {
+//                    byte[] correctMagData = getReversedBytes(value, 6);
+//                    mDeviceView.mMagData.setText(buildString(correctMagData));
+//                }
+//
+//                Log.d(TAG,"Got characteristic : " + uuidStr);
+//
+//            } else if (BluetoothLeService.ACTION_DATA_READ.equals(action)) {    // battery service
+//                byte[] value = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
+//                String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
+//                mDeviceView.mBatteryLevel.setText(buildString(value));
+//                Log.d(TAG,"Read characteristic : " + uuidStr);
+//            }
+//        }
+//    };
+
+    private final BroadcastReceiver mDataUpdateReceiver = new BroadcastReceiver() {
 
         @Override
         public void onReceive(final Context context, Intent intent) {
             final String action = intent.getAction();
-            final int status = intent.getIntExtra(BluetoothLeService.EXTRA_STATUS,
-                    BluetoothGatt.GATT_SUCCESS);
 
-            if (BluetoothLeService.ACTION_DATA_NOTIFY.equals(action)) {
-                // Notification
-                byte[] value = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
-                String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
-
-                // Battery level
-                if (uuidStr.contains("2a19")) {
-                    Date currentTime = Calendar.getInstance().getTime();
-                    String currentBattery = currentTime + ": " + buildString(value);
-                    batteryString = batteryString + " | " + currentBattery;
-                    mDeviceView.mBatteryLevel.setText(batteryString);
-                    Log.d(TAG,"Got characteristic : " + uuidStr + "battery level: " + buildString(value));
-                }
-
-                // Barometer data
-                if (uuidStr.contains("8882")) {
-                    // Get hPa (from BLE113 it is little endian order)
-                    byte[] correctBaroData = getCorrectBaroData(value);
-                    int correctData = byteToInt(correctBaroData);
-                    int hPa = correctData / 4096;
-                    byte[] displayData = new byte[3];
-                    for (int i=0; i<3; i++) {
-                        displayData[i] = correctBaroData[i+1];
-                    }
-                    mDeviceView.mBaroData.setText(buildString(displayData));
-                    mDeviceView.mHpaValue.setText("hPa: " + hPa);
-                    // Gyroscope data
-                } else if (uuidStr.contains("8884")) {
-                    byte[] correctGyroData = getReversedBytes(value, 6);
-                    mDeviceView.mGyroData.setText(buildString(correctGyroData));
-                // Accelerometer data
-                } else if (uuidStr.contains("8886")) {
-                    byte[] correctAccelData = getReversedBytes(value, 6);
-                    mDeviceView.mAccelData.setText(buildString(correctAccelData));
-                    if (dos != null) {
-                        try {
-                            dos.write(correctAccelData, 0, 2);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                //  Magnetometer data
-                } else if (uuidStr.contains("8888")) {
-                    byte[] correctMagData = getReversedBytes(value, 6);
-                    mDeviceView.mMagData.setText(buildString(correctMagData));
-                }
-
-                Log.d(TAG,"Got characteristic : " + uuidStr);
-
-            } else if (BluetoothLeService.ACTION_DATA_READ.equals(action)) {    // battery service
-                byte[] value = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
-                String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
-                mDeviceView.mBatteryLevel.setText(buildString(value));
-                Log.d(TAG,"Read characteristic : " + uuidStr);
+            if (MainActivity.ACTION_ACC.equals(action)) {
+                mDeviceView.mAccelData.setText("x: " + ScanView.currentAccelX[mDevicePosition] + "\ny: " +
+                        ScanView.currentAccelY[mDevicePosition] + "\nz: " + ScanView.currentAccelZ[mDevicePosition]);
+            } else if (MainActivity.ACTION_MAG.equals(action)) {
+                mDeviceView.mMagData.setText("x:"+ ScanView.currentMagX[mDevicePosition] + "\ny: " +
+                        ScanView.currentMagY[mDevicePosition] + "\nz: " + ScanView.currentMagZ[mDevicePosition] );
+            } else if (MainActivity.ACTION_GYR.equals(action)) {
+                mDeviceView.mGyroData.setText("x: "+ ScanView.currentGyroX[mDevicePosition] + "\ny: " +
+                        ScanView.currentGyroY[mDevicePosition] + "\nz: " + ScanView.currentGyroZ[mDevicePosition] );
+            } else {
+                mDeviceView.mBaroData.setText(Double.toString(ScanView.currentBaro[mDevicePosition]));
             }
+
         }
     };
 

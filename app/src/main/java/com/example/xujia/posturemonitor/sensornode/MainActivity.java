@@ -10,7 +10,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.icu.text.ScientificNumberFormatter;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
@@ -25,12 +27,13 @@ import com.example.xujia.posturemonitor.util.CustomToast;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends ViewPagerActivity {
 
     private static final String TAG = "MainActivity";
     private final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 0;
-    public final int NUMBER_OF_DEVICES = 2;
 
     public static RequestQueue requestQueue;
     public static String URL = "http://192.168.1.33:8000/handlePost";
@@ -39,6 +42,16 @@ public class MainActivity extends ViewPagerActivity {
     private static MainActivity mThis;
     private ScanView mScanView;
     private GalaxySensorView mGalaxyView;
+
+    // Broadcast to DeviceActivity
+    Timer timer;
+    TimerTask timerTask;
+    final Handler handler = new Handler();
+    public final static String EXTRA_DATA = "com.example.xujia.posturemonitor.common.EXTRA_DATA";
+    public final static String ACTION_ACC = "com.example.xujia.posturemonitor.common.ACTION_ACC";
+    public final static String ACTION_MAG = "com.example.xujia.posturemonitor.common.ACTION_MAG";
+    public final static String ACTION_GYR = "com.example.xujia.posturemonitor.common.ACTION_GYR";
+    public final static String ACTION_BAR = "com.example.xujia.posturemonitor.common.ACTION_BAR";
 
     // BLE management
     private boolean mScanning = false;
@@ -84,8 +97,9 @@ public class MainActivity extends ViewPagerActivity {
         mFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
         this.registerReceiver(mReceiver, mFilter);
 
-        requestQueue = Volley.newRequestQueue(this);
+        // requestQueue = Volley.newRequestQueue(this);
 
+        initBroadcastTimerTask();
     }
 
     public void onBtnClick(View view) {
@@ -131,7 +145,7 @@ public class MainActivity extends ViewPagerActivity {
                             BleDeviceInfo deviceInfo = createDeviceInfo(device, rssi, device.getAddress());
                             addDevice(deviceInfo);
                         }
-                        if (mDeviceInfoList.size()== NUMBER_OF_DEVICES) {
+                        if (mDeviceInfoList.size()== PostureMonitorApplication.NUMBER_OF_SENSORNODE) {
                             CustomToast.middleBottom(mThis, "All devices have been found.");
                             stopScan();
                             mScanView.showConnectAllButton();
@@ -220,6 +234,38 @@ public class MainActivity extends ViewPagerActivity {
 
         }
     };
+
+    private void initBroadcastTimerTask() {
+        timer = new Timer();
+        timerTask = new TimerTask() {
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        double[][] accelData = {ScanView.currentAccelX, ScanView.currentAccelY, ScanView.currentAccelZ};
+                        double[][] magData = {ScanView.currentMagX, ScanView.currentMagY, ScanView.currentMagZ};
+                        double[][] gyroData = {ScanView.currentGyroX, ScanView.currentGyroY, ScanView.currentGyroZ};
+                        broadcastUpdate(ACTION_ACC, accelData);
+                        broadcastUpdate(ACTION_MAG, magData);
+                        broadcastUpdate(ACTION_GYR, gyroData);
+                        broadcastUpdate(ACTION_BAR, ScanView.currentBaro);
+                    }
+                });
+            }
+        };
+        timer.schedule(timerTask, 1000, 500);
+    }
+
+    private void broadcastUpdate(final String action, final double[][] data) {
+        final Intent intent = new Intent(action);
+        // intent.putExtra(EXTRA_DATA, data);
+        sendBroadcast(intent);
+    }
+
+    private void broadcastUpdate(final String action, final double[] data) {
+        final Intent intent = new Intent(action);
+        // intent.putExtra(EXTRA_DATA, data);
+        sendBroadcast(intent);
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {

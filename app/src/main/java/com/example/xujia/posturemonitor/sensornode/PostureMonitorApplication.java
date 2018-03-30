@@ -22,6 +22,8 @@ public class PostureMonitorApplication extends Application {
 
     private static final String TAG = "Application";
 
+    public static final int NUMBER_OF_SENSORNODE = 2;
+
     public BluetoothAdapter mBtAdapter = null;
     private BluetoothLeService mBluetoothLeService;
     public static BluetoothManager mBluetoothManager;

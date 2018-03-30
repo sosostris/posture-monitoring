@@ -40,7 +40,10 @@ import com.example.xujia.posturemonitor.util.CustomToast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.Socket;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,20 +73,21 @@ public class ScanView extends Fragment {
     Timer timer;
     TimerTask timerTask;
     final Handler handler = new Handler();
-    double currentAccelX = -8888;
-    double currentAccelY = -8888;
-    double currentAccelZ = -8888;
-    double currentMagX = -8888;
-    double currentMagY = -8888;
-    double currentMagZ = -8888;
-    double currentGyroX = -8888;
-    double currentGyroY = -8888;
-    double currentGyroZ = -8888;
-    double currentBaro = -8888;
+    boolean streaming;
+    public static String[] sensernodeIds;
+    public static double[] currentAccelX;
+    public static double[] currentAccelY;
+    public static double[] currentAccelZ;
+    public static double[] currentMagX;
+    public static double[] currentMagY;
+    public static double[] currentMagZ;
+    public static double[] currentGyroX;
+    public static double[] currentGyroY;
+    public static double[] currentGyroZ;
+    public static double[] currentBaro;
 
     // BLE
     private BluetoothLeService mBluetoothLeService;
-    public int mNumberOfConfiguredDevices;
 
     // Handle automatic disconnection
     private boolean working = false;
@@ -102,11 +106,16 @@ public class ScanView extends Fragment {
     private BluetoothGattCharacteristic mMovDataC;
     private BluetoothGattCharacteristic mMovConfigC;
 
+    // TCP connection with Java Bigtable server
+    private static final String host = "192.168.1.33";
+    private static final int PORT = 8000;
+    private Socket btSocket;
+    private PrintWriter btOut;
+
     private BluetoothGatt mBtGatt;
     private boolean connecetSingleSensor = false;
     private int currentSensorPosition = -1;
     private int currentOnConnectPosition = 0;
-    private int currentDiscoverServicePosition = 0;
     private boolean connectAll = false;
 
     @Override
@@ -120,41 +129,34 @@ public class ScanView extends Fragment {
         mContext = mActivity.getApplicationContext();
 
         mBluetoothLeService = BluetoothLeService.getInstance();
+        streaming = false;
 
         // Initialize widgets and ListView adapter
         mBtnScan = (Button) view.findViewById(R.id.btn_scan);
         mBtnConnectAll = (Button) view.findViewById(R.id.btn_connect_all);
-//        mBtnConnectAll.setOnClickListener(v -> {
-//            for (int i=0; i<mActivity.getDeviceInfoList().size(); i++) {
-//                BluetoothDevice device = mActivity.getDeviceInfoList().get(i).getBluetoothDevice();
-//                mDeviceAdapter.onConnect(device, i);
-//            }
-//        });
         mBtnConnectAll.setOnClickListener(v -> {
             if (working) {
                 connecetSingleSensor = false;
+                reconnectPosition = -1;
                 working = false;
             }
             currentOnConnectPosition = 0;
-            currentDiscoverServicePosition = 0;
             connectAll = true;
             BluetoothDevice device = mActivity.getDeviceInfoList().get(0).getBluetoothDevice();
             mDeviceAdapter.onConnect(device, 0);
         });
         mBtnStream = (Button) view.findViewById(R.id.btn_stream);
-//        mBtnStream.setOnClickListener(v -> {
-//            // Create GATT object for each device
-//            for (int i = 0; i < mActivity.getDeviceInfoList().size(); i++) {
-//                mBtGatt = mBluetoothLeService.getBtGatt(i);
-//                if (mBtGatt != null) {
-//                    mBtGatt.discoverServices();
-//                }
-//            }
-//        });
         mBtnStream.setOnClickListener(v -> {
-            mBtGatt = mBluetoothLeService.getBtGatt(0);
-            if (mBtGatt != null) {
-                mBtGatt.discoverServices();
+            if (streaming) {
+                stopTimer();
+                mBtnStream.setText("Start streaming data");
+                Log.d(TAG, "Timer stopped");
+                streaming = false;
+            } else {
+                startTimer();
+                Log.d(TAG, "Timer started");
+                mBtnStream.setText("Stop streaming data");
+                streaming = true;
             }
         });
 
@@ -174,6 +176,8 @@ public class ScanView extends Fragment {
 
         mActivity.registerReceiver(mReceiver, mFilter);
 
+        initializeUploadInfo();
+
         return view;
     }
 
@@ -181,23 +185,22 @@ public class ScanView extends Fragment {
     public void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
-        mActivity.registerReceiver(mReceiver, mFilter);
-        startTimer();
+        // mActivity.registerReceiver(mReceiver, mFilter);
     }
 
     @Override
     public void onPause() {
         Log.d(TAG, "onPause");
-        stoptimertask();
+        // stopTimer();
         super.onPause();
-        mActivity.unregisterReceiver(mReceiver);
+        // mActivity.unregisterReceiver(mReceiver);
     }
 
     @Override
     public void onDestroy() {
         Log.i(TAG, "onDestroy");
         mActivity.unregisterReceiver(mReceiver);
-        stoptimertask();
+        stopTimer();
         super.onDestroy();
     }
 
@@ -316,14 +319,14 @@ public class ScanView extends Fragment {
         }
     }
 
-    private void showDataButtons() {
-        for (int i = 0; i < mNumberOfConfiguredDevices; i++) {
-            getViewByPosition(i, mDeviceListView).findViewById(R.id.btnData).setVisibility(View.VISIBLE);
-        }
+    private void toggleDataBtn(int position, boolean show) {
+        View dataBtn = getViewByPosition(position, mDeviceListView).findViewById(R.id.btnData);
+        dataBtn.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
-    private void showDataButton(int position) {
-        getViewByPosition(position, mDeviceListView).findViewById(R.id.btnData).setVisibility(View.VISIBLE);
+    private void toggleConnectBtnText(int position, String text) {
+        Button connectBtn = getViewByPosition(position, mDeviceListView).findViewById(R.id.btnConnect);
+        connectBtn.setText(text);
     }
 
     // Broadcasted actions from Bluetooth adapter and BluetoothLeService
@@ -346,9 +349,10 @@ public class ScanView extends Fragment {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     CustomToast.middleBottom(mContext, "Connected. Address " + address + ". Status: " + status);
                     int position = findPosition(address);
-                    ((Button) getViewByPosition(position, mDeviceListView).findViewById(R.id.btnConnect)).setText("Disconnect");
+                    toggleConnectBtnText(position, "Disconnect");
 
-                    if (mBluetoothLeService.numConnectedDevices() == mActivity.NUMBER_OF_DEVICES) {
+                    if (mBluetoothLeService.numConnectedDevices() == PostureMonitorApplication.NUMBER_OF_SENSORNODE) {
+                        working = true;
                         mBtnStream.setVisibility(View.VISIBLE);
                         mBtnConnectAll.setText("Disconnect all");
                     }
@@ -356,15 +360,19 @@ public class ScanView extends Fragment {
                     if (reconnectPosition != -1) {
                         mBtGatt = mBluetoothLeService.getBtGatt(reconnectPosition);
                         mBtGatt.discoverServices();
-                    } else if (connectAll) {
-                        currentOnConnectPosition++;
-                        if (currentOnConnectPosition < mActivity.getDeviceInfoList().size()) {
-                            BluetoothDevice device = mActivity.getDeviceInfoList().get(currentOnConnectPosition).getBluetoothDevice();
-                            mDeviceAdapter.onConnect(device, currentOnConnectPosition);
-                        }
                     } else if (connecetSingleSensor) {
                         mBtGatt = mBluetoothLeService.getBtGatt(currentSensorPosition);
                         mBtGatt.discoverServices();
+                    } else if (connectAll) {
+                        // Discover service for the current sensornode
+                        mBtGatt = mBluetoothLeService.getBtGatt(currentOnConnectPosition);
+                        mBtGatt.discoverServices();
+                        // Connect the next sensornode
+                        currentOnConnectPosition++;
+                        if (currentOnConnectPosition < PostureMonitorApplication.NUMBER_OF_SENSORNODE) {
+                            BluetoothDevice device = mActivity.getDeviceInfoList().get(currentOnConnectPosition).getBluetoothDevice();
+                            mDeviceAdapter.onConnect(device, currentOnConnectPosition);
+                        }
                     }
 
                 } else {
@@ -378,8 +386,8 @@ public class ScanView extends Fragment {
                 Log.d(TAG, "Disconnected from " + address);
                 CustomToast.middleBottom(mContext, "Disconnected from " + address);
                 int position = findPosition(address);
-                ((Button) getViewByPosition(position, mDeviceListView).findViewById(R.id.btnConnect)).setText("Connect");
-                getViewByPosition(position, mDeviceListView).findViewById(R.id.btnData).setVisibility(View.GONE);
+                toggleConnectBtnText(position, "Connect");
+                toggleDataBtn(position, false);
 
                 // Handle unwanted disconnection
                 if (working) {
@@ -392,17 +400,14 @@ public class ScanView extends Fragment {
                         e.printStackTrace();
                     }
                 } else if (connectAll) {
-                    mNumberOfConfiguredDevices--;
                     currentOnConnectPosition++;
                     if (currentOnConnectPosition < mActivity.getDeviceInfoList().size()) {
                         BluetoothDevice device = mActivity.getDeviceInfoList().get(currentOnConnectPosition).getBluetoothDevice();
                         mDeviceAdapter.onConnect(device, currentOnConnectPosition);
                     }
-                } else if (connecetSingleSensor) {
-                    mNumberOfConfiguredDevices--;
                 }
-
                 if (mBluetoothLeService.numConnectedDevices() == 0) {
+                    mBtnStream.setVisibility(View.GONE);
                     mBtnConnectAll.setText("Connect all");
                 }
 
@@ -411,284 +416,98 @@ public class ScanView extends Fragment {
                 int status = intent.getIntExtra(BluetoothLeService.EXTRA_STATUS,
                         BluetoothGatt.GATT_SUCCESS);
                 String address = intent.getStringExtra(BluetoothLeService.EXTRA_ADDRESS);
+                int position = findPosition(address);
 
-                if (reconnectPosition != -1) {
-                    if (status == BluetoothGatt.GATT_SUCCESS) {
-                        final List<BluetoothGattService> mServiceList = mBluetoothLeService.getSupportedGattServices(reconnectPosition);
-                        try {
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        for (BluetoothGattService service : mServiceList) {
-                            // If device is BLE113 sensornode
-                            if (address.equals(giraffe)) {
-                                if (!service.getUuid().toString().contains("1800")) {
-                                    List<BluetoothGattCharacteristic> chars = service.getCharacteristics();
-                                    for (BluetoothGattCharacteristic c : chars) {
-                                        enableNotification(c, reconnectPosition);
-                                        try {
-                                            Thread.sleep(200);
-                                        } catch (InterruptedException e) {
-                                            e.printStackTrace();
-                                        }
-                                    }
-                                }
-                            } else {    // If device is a CC2650 sensortags
-                                if (service.getUuid().toString().compareTo(SensorTagGatt.UUID_BAR_SERV.toString()) == 0) {
-                                    List<BluetoothGattCharacteristic> barometerChars = service.getCharacteristics();
-                                    for (BluetoothGattCharacteristic c : barometerChars) {
-                                        if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_DATA.toString())) {
-                                            mBarometerDataC = c;
-                                        }
-                                        if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_CONF.toString())) {
-                                            mBarometerConfigC = c;
-                                        }
-                                    }
-                                    mBluetoothLeService.setCharacteristicNotification(mBarometerDataC, true, reconnectPosition);
-                                    try {
-                                        Thread.sleep(100);
-                                    } catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
-                                    mActivity.runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            mBluetoothLeService.writeCharacteristic(mBarometerConfigC, (byte) 0x01, reconnectPosition);
-                                        }
-                                    });
-                                }
-                                if (service.getUuid().toString().compareTo(SensorTagGatt.UUID_MOV_SERV.toString()) == 0) {
-                                    List<BluetoothGattCharacteristic> humidityChars = service.getCharacteristics();
-                                    for (BluetoothGattCharacteristic c : humidityChars) {
-                                        if (c.getUuid().toString().equals(SensorTagGatt.UUID_MOV_DATA.toString())) {
-                                            mMovDataC = c;
-                                        }
-                                        if (c.getUuid().toString().equals(SensorTagGatt.UUID_MOV_CONF.toString())) {
-                                            mMovConfigC = c;
-                                        }
-                                    }
-                                    mBluetoothLeService.setCharacteristicNotification(mMovDataC, true, reconnectPosition);
-                                    try {
-                                        Thread.sleep(100);
-                                    } catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
-                                    mActivity.runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            byte[] config = {0x01, 0x7f};
-                                            mBluetoothLeService.writeCharacteristic(mMovConfigC, config, reconnectPosition);
-                                        }
-                                    });
-                                }
-                            }
-                        }
-                        showDataButton(reconnectPosition);
-                    } else {
-                        Toast.makeText(mContext, "Service discovery failed",
-                                Toast.LENGTH_LONG).show();
-                        return;
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    final List<BluetoothGattService> mServiceList = mBluetoothLeService.getSupportedGattServices(position);
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
-                } else if (connectAll) {
-                    if (status == BluetoothGatt.GATT_SUCCESS) {
-                        final List<BluetoothGattService> mServiceList = mBluetoothLeService.getSupportedGattServices(currentDiscoverServicePosition);
-                        try {
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        for (BluetoothGattService service : mServiceList) {
-                            // If device is BLE113 sensornode
-                            if (address.equals(giraffe)) {
-                                if (!service.getUuid().toString().contains("1800")) {
-                                    List<BluetoothGattCharacteristic> chars = service.getCharacteristics();
-                                    for (BluetoothGattCharacteristic c : chars) {
-                                        enableNotification(c, currentSensorPosition);
-                                        try {
-                                            Thread.sleep(200);
-                                        } catch (InterruptedException e) {
-                                            e.printStackTrace();
-                                        }
-                                    }
-                                }
-                            } else {    // If device is a CC2650 sensortags
-                                if (service.getUuid().toString().compareTo(SensorTagGatt.UUID_BAR_SERV.toString()) == 0) {
-                                    List<BluetoothGattCharacteristic> barometerChars = service.getCharacteristics();
-                                    for (BluetoothGattCharacteristic c : barometerChars) {
-                                        if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_DATA.toString())) {
-                                            mBarometerDataC = c;
-                                        }
-                                        if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_CONF.toString())) {
-                                            mBarometerConfigC = c;
-                                        }
-                                    }
-                                    mBluetoothLeService.setCharacteristicNotification(mBarometerDataC, true, currentSensorPosition);
+                    for (BluetoothGattService service : mServiceList) {
+                        // If device is BLE113 sensornode
+                        if (address.equals(giraffe)) {
+                            if (!service.getUuid().toString().contains("1800")) {
+                                List<BluetoothGattCharacteristic> chars = service.getCharacteristics();
+                                for (BluetoothGattCharacteristic c : chars) {
+                                    enableNotification(c, position);
                                     try {
-                                        Thread.sleep(100);
+                                        Thread.sleep(200);
                                     } catch (InterruptedException e) {
                                         e.printStackTrace();
                                     }
-                                    mActivity.runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            mBluetoothLeService.writeCharacteristic(mBarometerConfigC, (byte) 0x01, currentSensorPosition);
-                                        }
-                                    });
-                                }
-                                if (service.getUuid().toString().compareTo(SensorTagGatt.UUID_MOV_SERV.toString()) == 0) {
-                                    List<BluetoothGattCharacteristic> humidityChars = service.getCharacteristics();
-                                    for (BluetoothGattCharacteristic c : humidityChars) {
-                                        if (c.getUuid().toString().equals(SensorTagGatt.UUID_MOV_DATA.toString())) {
-                                            mMovDataC = c;
-                                        }
-                                        if (c.getUuid().toString().equals(SensorTagGatt.UUID_MOV_CONF.toString())) {
-                                            mMovConfigC = c;
-                                        }
-                                    }
-                                    mBluetoothLeService.setCharacteristicNotification(mMovDataC, true, currentSensorPosition);
-                                    try {
-                                        Thread.sleep(100);
-                                    } catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
-                                    mActivity.runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            byte[] config = {0x01, 0x7f};
-                                            mBluetoothLeService.writeCharacteristic(mMovConfigC, config, currentSensorPosition);
-                                        }
-                                    });
                                 }
                             }
-                        }
-                        mNumberOfConfiguredDevices++;
-                        showDataButton(currentDiscoverServicePosition);
-                        if (mNumberOfConfiguredDevices == mActivity.NUMBER_OF_DEVICES) {
-                            mBtnConnectAll.setText("Stop streaming and disconnect devices");
-                            mBtnStream.setVisibility(View.GONE);
-                            working = true;
-                            reconnectPosition = -1;
-                        }
-                        currentDiscoverServicePosition++;
-                        if (currentDiscoverServicePosition < mActivity.getDeviceInfoList().size()) {
-                            mBtGatt = mBluetoothLeService.getBtGatt(currentDiscoverServicePosition);
-                            try {
-                                Thread.sleep(100);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                        } else {    // If device is a CC2650 sensortag
+                            if (service.getUuid().toString().compareTo(SensorTagGatt.UUID_BAR_SERV.toString()) == 0) {
+                                List<BluetoothGattCharacteristic> barometerChars = service.getCharacteristics();
+                                for (BluetoothGattCharacteristic c : barometerChars) {
+                                    if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_DATA.toString())) {
+                                        mBarometerDataC = c;
+                                    }
+                                    if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_CONF.toString())) {
+                                        mBarometerConfigC = c;
+                                    }
+                                }
+                                mBluetoothLeService.setCharacteristicNotification(mBarometerDataC, true, position);
+                                try {
+                                    Thread.sleep(100);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                mActivity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        mBluetoothLeService.writeCharacteristic(mBarometerConfigC, (byte) 0x01, position);
+                                    }
+                                });
                             }
-                            if (mBtGatt != null) {
-                                mBtGatt.discoverServices();
+                            if (service.getUuid().toString().compareTo(SensorTagGatt.UUID_MOV_SERV.toString()) == 0) {
+                                List<BluetoothGattCharacteristic> humidityChars = service.getCharacteristics();
+                                for (BluetoothGattCharacteristic c : humidityChars) {
+                                    if (c.getUuid().toString().equals(SensorTagGatt.UUID_MOV_DATA.toString())) {
+                                        mMovDataC = c;
+                                    }
+                                    if (c.getUuid().toString().equals(SensorTagGatt.UUID_MOV_CONF.toString())) {
+                                        mMovConfigC = c;
+                                    }
+                                }
+                                mBluetoothLeService.setCharacteristicNotification(mMovDataC, true, position);
+                                try {
+                                    Thread.sleep(100);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                mActivity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        byte[] config = {0x7f, 0x01};
+                                        mBluetoothLeService.writeCharacteristic(mMovConfigC, config, position);
+                                    }
+                                });
                             }
                         }
-                    } else {
-                        Toast.makeText(mContext, "Service discovery failed",
-                                Toast.LENGTH_LONG).show();
-                        return;
                     }
-                } else if (connecetSingleSensor) {
-                    if (status == BluetoothGatt.GATT_SUCCESS) {
-                        final List<BluetoothGattService> mServiceList = mBluetoothLeService.getSupportedGattServices(currentSensorPosition);
-                        try {
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        Thread worker = new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                for (BluetoothGattService service : mServiceList) {
-                                    // If device is BLE113 sensornode
-                                    if (address.equals(giraffe)) {
-                                        if (!service.getUuid().toString().contains("1800")) {
-                                            List<BluetoothGattCharacteristic> chars = service.getCharacteristics();
-                                            for (BluetoothGattCharacteristic c : chars) {
-                                                enableNotification(c, currentSensorPosition);
-                                                try {
-                                                    Thread.sleep(200);
-                                                } catch (InterruptedException e) {
-                                                    e.printStackTrace();
-                                                }
-                                            }
-                                        }
-                                    } else {    // If device is a CC2650 sensortags
-                                        if (service.getUuid().toString().compareTo(SensorTagGatt.UUID_BAR_SERV.toString()) == 0) {
-                                            List<BluetoothGattCharacteristic> barometerChars = service.getCharacteristics();
-                                            for (BluetoothGattCharacteristic c : barometerChars) {
-                                                if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_DATA.toString())) {
-                                                    mBarometerDataC = c;
-                                                }
-                                                if (c.getUuid().toString().equals(SensorTagGatt.UUID_BAR_CONF.toString())) {
-                                                    mBarometerConfigC = c;
-                                                }
-                                            }
-                                            mBluetoothLeService.setCharacteristicNotification(mBarometerDataC, true, currentSensorPosition);
-                                            try {
-                                                Thread.sleep(100);
-                                            } catch (InterruptedException e) {
-                                                e.printStackTrace();
-                                            }
-                                            mActivity.runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    mBluetoothLeService.writeCharacteristic(mBarometerConfigC, (byte) 0x01, currentSensorPosition);
-                                                }
-                                            });
-                                        }
-                                        if (service.getUuid().toString().compareTo(SensorTagGatt.UUID_MOV_SERV.toString()) == 0) {
-                                            List<BluetoothGattCharacteristic> humidityChars = service.getCharacteristics();
-                                            for (BluetoothGattCharacteristic c : humidityChars) {
-                                                if (c.getUuid().toString().equals(SensorTagGatt.UUID_MOV_DATA.toString())) {
-                                                    mMovDataC = c;
-                                                }
-                                                if (c.getUuid().toString().equals(SensorTagGatt.UUID_MOV_CONF.toString())) {
-                                                    mMovConfigC = c;
-                                                }
-                                            }
-                                            mBluetoothLeService.setCharacteristicNotification(mMovDataC, true, currentSensorPosition);
-                                            try {
-                                                Thread.sleep(100);
-                                            } catch (InterruptedException e) {
-                                                e.printStackTrace();
-                                            }
-                                            mActivity.runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    byte[] config = {0x7f, 0x01};
-                                                    mBluetoothLeService.writeCharacteristic(mMovConfigC, config, currentSensorPosition);
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                        worker.start();
-                        mNumberOfConfiguredDevices++;
-                        showDataButton(currentSensorPosition);
-                        if (mNumberOfConfiguredDevices == mActivity.NUMBER_OF_DEVICES) {
-                            mBtnConnectAll.setText("Stop streaming and disconnect devices");
-                            mBtnStream.setVisibility(View.GONE);
-                            working = true;
-                        }
-                    } else {
-                        Toast.makeText(mContext, "Service discovery failed",
-                                Toast.LENGTH_LONG).show();
-                        return;
-                    }
+                    toggleDataBtn(position, true);
+                } else {
+                    Toast.makeText(mContext, "Service discovery failed",
+                            Toast.LENGTH_LONG).show();
+                    return;
                 }
             } else if (BluetoothLeService.ACTION_DATA_NOTIFY.equals(action)) {
                 // Notification
                 byte[] value = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
                 String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
-                Log.d(TAG, "Got Characteristic : " + uuidStr);
+                String address = intent.getStringExtra(BluetoothLeService.EXTRA_ADDRESS);
+                int position = findPosition(address);
+                Log.d(TAG, "Got Characteristic : " + uuidStr + " " + address);
                 if (uuidStr.contains("aa41")) {
-                    currentBaro = getPressureData(value);
+                    currentBaro[position] = getPressureData(value);
                 } else if (uuidStr.contains("aa81")) {
-                    getGyroData(value);
-                    getAccelData(value);
-                    getMagData(value);
+                    getGyroData(value, position);
+                    getAccelData(value, position);
+                    getMagData(value, position);
                 }
             } else if (BluetoothLeService.ACTION_DATA_WRITE.equals(action)) {
                 String uuidStr = intent.getStringExtra(BluetoothLeService.EXTRA_UUID);
@@ -729,44 +548,70 @@ public class ScanView extends Fragment {
         return (upperByte << 16) + (mediumByte << 8) + lowerByte;
     }
 
-    private void getGyroData(byte[] value) {
+    private void getGyroData(byte[] value, int position) {
         int x = (value[1] << 8) + value[0];
-        currentGyroX = (x * 1.0) / (65536 / 500);
+        currentGyroX[position] = (x * 1.0) / (65536 / 500);
         int y = (value[3] << 8) + value[2];
-        currentGyroY = (y * 1.0) / (65536 / 500);
+        currentGyroY[position] = (y * 1.0) / (65536 / 500);
         int z = (value[5] << 8) + value[4];
-        currentGyroZ = (z * 1.0) / (65536 / 500);
+        currentGyroZ[position] = (z * 1.0) / (65536 / 500);
     }
 
-    private void getAccelData(byte[] value) {
+    private void getAccelData(byte[] value, int position) {
         int x = (value[7] << 8) + value[6];
-        currentAccelX = (x * 1.0) / 8192;    // 32768/4
+        currentAccelX[position] = (x * 1.0) / 8192;    // 32768/4
         int y = (value[9] << 8) + value[8];
-        currentAccelY = (y * 1.0) / 8192;
+        currentAccelY[position] = (y * 1.0) / 8192;
         int z = (value[11] << 8) + value[10];
-        currentAccelZ = (z * 1.0) / 8192;
+        currentAccelZ[position] = (z * 1.0) / 8192;
     }
 
-    private void getMagData(byte[] value) {
+    private void getMagData(byte[] value, int position) {
         int x = (value[13] << 8) + value[12];
-        currentMagX = x * 1.0;
+        currentMagX[position] = x * 1.0;
         int y = (value[15] << 8) + value[14];
-        currentMagY = y * 1.0;
+        currentMagY[position] = y * 1.0;
         int z = (value[17] << 8) + value[16];
-        currentMagZ = z * 1.0;
+        currentMagZ[position] = z * 1.0;
     }
 
-    public void startTimer() {
-        timer = new Timer();
-        initializeTimerTask();
-        timer.schedule(timerTask, 50, 100);
-    }
+//    private void startTimer() {
+//        timer = new Timer();
+//        initializeHttpTimerTask();
+//        timer.schedule(timerTask, 1000, 100);
+//    }
 
-    public void stoptimertask() {
+    private void stopTimer() {
         if (timer != null) {
             timer.cancel();
+            // timer.purge();
             timer = null;
         }
+    }
+
+    private void startTimer() {
+        Thread btWorker = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    btSocket = new Socket(host, PORT);
+                    if (btSocket != null) {
+                        try {
+                            btOut = new PrintWriter(btSocket.getOutputStream(), true);
+                            Log.d(TAG, "Connected with Bigtable Java TCP server");
+                            timer = new Timer();
+                            initTCPTimerTask();
+                            timer.schedule(timerTask, 1000, 500);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        btWorker.start();
     }
 
     private static class MyResponseListner implements Response.Listener<String> {
@@ -818,39 +663,105 @@ public class ScanView extends Fragment {
         }
     }
 
-    public void initializeTimerTask() {
+    private void initializeHttpTimerTask() {
         timerTask = new TimerTask() {
             public void run() {
                 handler.post(new Runnable() {
                     public void run() {
-                        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                        long timestamp = new Timestamp(System.currentTimeMillis()).getTime();
                         JSONObject jsonBody = new JSONObject();
-                        if ((currentBaro == -8888) || (currentMagZ == -8888)) {
-                            return;
-                        }
-                        try {
-                            jsonBody.put("Timestamp", timestamp);
-                            jsonBody.put("Baro", Double.toString(currentBaro));
-                            jsonBody.put("AccelX", currentAccelX);
-                            jsonBody.put("AccelY", currentAccelY);
-                            jsonBody.put("AccelZ", currentAccelZ);
-                            jsonBody.put("MagX", currentMagX);
-                            jsonBody.put("MagY", currentMagY);
-                            jsonBody.put("MagZ", currentMagZ);
-                            jsonBody.put("GyroX", currentGyroX);
-                            jsonBody.put("GyroY", currentGyroY);
-                            jsonBody.put("GyroZ", currentGyroZ);
-                            final String requestBody = jsonBody.toString();
-                            StringRequest stringRequest = new JsonRequest(requestBody, Request.Method.POST, MainActivity.URL,
-                                    new MyResponseListner(), new MyErrorListener());
-                            MainActivity.requestQueue.add(stringRequest);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
+                        for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
+                            if ((currentBaro[i] == -8888) || (currentMagZ[i] == -8888) || (currentBaro[i] == 0) || (currentMagZ[i] == 0)) {
+                                continue;
+                            }
+                            try {
+                                jsonBody.put("SensornodeId", sensernodeIds[i]);
+                                jsonBody.put("Timestamp", timestamp);
+                                jsonBody.put("Baro", currentBaro[i]);
+                                jsonBody.put("AccelX", currentAccelX[i]);
+                                jsonBody.put("AccelY", currentAccelY[i]);
+                                jsonBody.put("AccelZ", currentAccelZ[i]);
+                                jsonBody.put("MagX", currentMagX[i]);
+                                jsonBody.put("MagY", currentMagY[i]);
+                                jsonBody.put("MagZ", currentMagZ[i]);
+                                jsonBody.put("GyroX", currentGyroX[i]);
+                                jsonBody.put("GyroY", currentGyroY[i]);
+                                jsonBody.put("GyroZ", currentGyroZ[i]);
+                                currentBaro[i] = -8888;
+                                final String requestBody = jsonBody.toString();
+                                StringRequest stringRequest = new JsonRequest(requestBody, Request.Method.POST, MainActivity.URL,
+                                        new MyResponseListner(), new MyErrorListener());
+                                MainActivity.requestQueue.add(stringRequest);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 });
             }
         };
+    }
+
+    private void initTCPTimerTask() {
+        timerTask = new TimerTask() {
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
+                            if ((currentBaro[i] == -8888) || (currentMagZ[i] == -8888) || (currentBaro[i] == 0) || (currentMagZ[i] == 0)) {
+                                continue;
+                            }
+                            long timestamp = new Timestamp(System.currentTimeMillis()).getTime();
+                            StringBuilder sb = new StringBuilder();
+                            sb.append(sensernodeIds[i] + " ");
+                            sb.append(timestamp + " ");
+                            sb.append(currentAccelX[i] + " ");
+                            sb.append(currentAccelY[i] + " ");
+                            sb.append(currentAccelZ[i] + " ");
+                            sb.append(currentMagX[i] + " ");
+                            sb.append(currentMagY[i] + " ");
+                            sb.append(currentMagZ[i] + " ");
+                            sb.append(currentGyroX[i] + " ");
+                            sb.append(currentGyroY[i] + " ");
+                            sb.append(currentGyroZ[i] + " ");
+                            sb.append(currentBaro[i] + " ");
+                            currentBaro[i] = -8888;
+                            if (btOut != null) {
+                                btOut.println(sb.toString());
+                            }
+                        }
+                    }
+                });
+            }
+        };
+    }
+
+    // Initialize all sensornode raw data to -8888
+    private void initializeUploadInfo() {
+        currentAccelX = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentAccelY = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentAccelZ = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentMagX = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentMagY = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentMagZ = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentGyroX = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentGyroY = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentGyroZ = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        currentBaro = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        sensernodeIds = new String[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
+        for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
+            currentAccelX[i] = -8888;
+            currentAccelY[i] = -8888;
+            currentAccelZ[i] = -8888;
+            currentMagX[i] = -8888;
+            currentMagY[i] = -8888;
+            currentMagZ[i] = -8888;
+            currentGyroX[i] = -8888;
+            currentGyroY[i] = -8888;
+            currentGyroZ[i] = -8888;
+            currentBaro[i] = -8888;
+            sensernodeIds[i] = "SN000" + (i+1);
+        }
     }
 
 }
