@@ -68,7 +68,7 @@ public class ScanView extends Fragment {
     private Intent mDeviceIntent;
     private IntentFilter mFilter;
 
-    // For http client user
+    // For Bigtable
     Timer timer;
     TimerTask timerTask;
     final Handler handler = new Handler();
@@ -84,6 +84,18 @@ public class ScanView extends Fragment {
     public static double[] currentGyroY;
     public static double[] currentGyroZ;
     public static double[] currentBaro;
+
+    // For MATLAB
+    public static byte[][] currentAccelXByte;
+    public static byte[][] currentAccelYByte;
+    public static byte[][] currentAccelZByte;
+    public static byte[][] currentMagXByte;
+    public static byte[][] currentMagYByte;
+    public static byte[][] currentMagZByte;
+    public static byte[][] currentGyroXByte;
+    public static byte[][] currentGyroYByte;
+    public static byte[][] currentGyroZByte;
+    public static byte[][] currentBaroByte;
 
     // BLE
     private BluetoothLeService mBluetoothLeService;
@@ -175,7 +187,8 @@ public class ScanView extends Fragment {
 
         mActivity.registerReceiver(mReceiver, mFilter);
 
-        initializeUploadInfo();
+        initUploadInfo();
+        initMATLABData();
 
         return view;
     }
@@ -504,7 +517,7 @@ public class ScanView extends Fragment {
 
                 // CC2650 Sensortag
                 if (uuidStr.contains("aa41")) {
-                    currentBaro[position] = getPressureDataCC2650(value);
+                    currentBaro[position] = getPressureDataCC2650(value, position);
                 } else if (uuidStr.contains("aa81")) {
                     getGyroDataCC2650(value, position);
                     getAccelDataCC2650(value, position);
@@ -512,7 +525,7 @@ public class ScanView extends Fragment {
 
                 // BLE113 Sensornode
                 } else if (uuidStr.contains("8882")) {
-                    currentBaro[position] = getPressureDataBLE113(value);
+                    currentBaro[position] = getPressureDataBLE113(value, position);
                 } else if (uuidStr.contains("8884")) {
                     getGyroDataBLE113(value, position);
                 } else if (uuidStr.contains("8886")) {
@@ -551,18 +564,19 @@ public class ScanView extends Fragment {
     }
 
     // Barometer from CC2650 has 6 bytes; bytes 0-2 is temperature; bytes 3-5 is barometer
-    private double getPressureDataCC2650(byte[] value) {
+    private double getPressureDataCC2650(byte[] value, int position) {
         Integer rawValue = twentyFourBitUnsignedAtOffset(value, 3);
         return rawValue / 100f;
     }
 
-    private double getPressureDataBLE113(byte[] value) {
+    private double getPressureDataBLE113(byte[] value, int position) {
         // The data in BLE113 is stored in little endian order so we need to reverse order
         byte[] valueInOrder = new byte[4];
         valueInOrder[0] = 0;
         for (int i=1; i<4; i++) {
             valueInOrder[i] = value[3-i];
         }
+        writeToMATLABBytes(valueInOrder, position, "baro");
         int correctData = byteToInt(valueInOrder);
         int hPa = correctData / 4096;
         return hPa;
@@ -578,6 +592,7 @@ public class ScanView extends Fragment {
 
     private void getGyroDataBLE113(byte[] value, int position) {
         byte[] dataInOrder = getReversedBytes(value, 6);
+        writeToMATLABBytes(dataInOrder, position, "gyr");
         int z = (dataInOrder[0] << 8) | dataInOrder[1];
         int y = (dataInOrder[2] << 8) | dataInOrder[3];
         int x = (dataInOrder[4] << 8) | dataInOrder[5];
@@ -589,6 +604,7 @@ public class ScanView extends Fragment {
 
     private void getAccelDataBLE113(byte[] value, int position) {
         byte[] dataInOrder = getReversedBytes(value, 6);
+        writeToMATLABBytes(dataInOrder, position, "acc");
         int z = (dataInOrder[0] << 8) | dataInOrder[1];
         int y = (dataInOrder[2] << 8) | dataInOrder[3];
         int x = (dataInOrder[4] << 8) | dataInOrder[5];
@@ -598,8 +614,16 @@ public class ScanView extends Fragment {
         currentAccelZ[position] = (z * 1.0) / 8192;
     }
 
+    /*
+    The magnetic field of a certain point is directional and has magnitude.
+    The x,y,z returned by the sensor is a vector that describes the strength and direction
+    of the magnetic field relative to the device measured in microtesla.
+    For example, a value of (x, y, z) = (50, 50, 0) means that there is a magnetic field
+    sqrt(50**2+50**2+0**2) ≈ 70.7107 microtesla strong in the direction of 45 degree to X-axis and Y-axis of the device.
+     */
     private void getMagDataBLE113(byte[] value, int position) {
         byte[] dataInOrder = getReversedBytes(value, 6);
+        writeToMATLABBytes(dataInOrder, position, "mag");
         int z = (dataInOrder[0] << 8) | dataInOrder[1];
         int y = (dataInOrder[2] << 8) | dataInOrder[3];
         int x = (dataInOrder[4] << 8) | dataInOrder[5];
@@ -660,6 +684,40 @@ public class ScanView extends Fragment {
         currentMagY[position] = y * 1.0;
         int z = (value[17] << 8) + value[16];
         currentMagZ[position] = z * 1.0;
+    }
+
+    private void writeToMATLABBytes(byte[] data, int position, String sensorType) {
+        switch (sensorType) {
+            case "acc":
+                currentAccelZByte[position][0] = data[0];
+                currentAccelZByte[position][1] = data[1];
+                currentAccelYByte[position][0] = data[2];
+                currentAccelYByte[position][1] = data[3];
+                currentAccelXByte[position][0] = data[4];
+                currentAccelXByte[position][1] = data[5];
+                break;
+            case "mag":
+                currentMagZByte[position][0] = data[0];
+                currentMagZByte[position][1] = data[1];
+                currentMagYByte[position][0] = data[2];
+                currentMagYByte[position][1] = data[3];
+                currentMagXByte[position][0] = data[4];
+                currentMagXByte[position][1] = data[5];
+                break;
+            case "gyr":
+                currentGyroZByte[position][0] = data[0];
+                currentGyroZByte[position][1] = data[1];
+                currentGyroYByte[position][0] = data[2];
+                currentGyroYByte[position][1] = data[3];
+                currentGyroXByte[position][0] = data[4];
+                currentGyroXByte[position][1] = data[5];
+                break;
+            case "bar":
+                currentBaroByte[position][0] = data[1];
+                currentBaroByte[position][1] = data[2];
+                currentBaroByte[position][2] = data[3];
+        }
+
     }
 
 //    private void startTimer() {
@@ -772,7 +830,7 @@ public class ScanView extends Fragment {
                                 continue;
                             }
                             try {
-                                jsonBody.put("SensornodeId", PostureMonitorApplication.DEVICE_NAME_LIST[i]);
+                                jsonBody.put("SensornodeId", PostureMonitorApplication.DEVICE_LIST.get(PostureMonitorApplication.DEVICE_ADDRESS_LIST[i]));
                                 jsonBody.put("Timestamp", timestamp);
                                 jsonBody.put("Baro", currentBaro[i]);
                                 jsonBody.put("AccelX", currentAccelX[i]);
@@ -810,7 +868,7 @@ public class ScanView extends Fragment {
                             }
                             long timestamp = new Timestamp(System.currentTimeMillis()).getTime();
                             StringBuilder sb = new StringBuilder();
-                            sb.append(PostureMonitorApplication.DEVICE_NAME_LIST[i] + " ");
+                            sb.append(PostureMonitorApplication.DEVICE_LIST.get(PostureMonitorApplication.DEVICE_ADDRESS_LIST[i]) + " ");
                             sb.append(timestamp + " ");
                             sb.append(currentAccelX[i] + " ");
                             sb.append(currentAccelY[i] + " ");
@@ -834,7 +892,7 @@ public class ScanView extends Fragment {
     }
 
     // Initialize all sensornode raw data to -8888
-    private void initializeUploadInfo() {
+    private void initUploadInfo() {
         currentAccelX = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         currentAccelY = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         currentAccelZ = new double[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
@@ -859,6 +917,19 @@ public class ScanView extends Fragment {
             currentBaro[i] = -8888;
             currentBatteryLevel[i] = "Unknown";
         }
+    }
+
+    private void initMATLABData() {
+        currentAccelXByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentAccelYByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentAccelZByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentMagXByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentMagYByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentMagZByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentGyroXByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentGyroYByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentGyroZByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
+        currentBaroByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][3];
     }
 
 }

@@ -9,6 +9,8 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.RadioButton;
 import android.widget.TextView;
 
 import com.example.xujia.posturemonitor.R;
@@ -24,9 +26,13 @@ public class DeviceView extends Fragment {
     public TextView mGyroData;
     public TextView mAccelData;
     public TextView mMagData;
-    public TextView mHpaValue;
     public TextView mSensornodeId;
     public TextView mBatteryLevel;
+    public RadioButton mAccelRadioBtn;
+    public RadioButton mMagRadioBtn;
+    public RadioButton mGyroRadioBtn;
+    public RadioButton mBaroRadioBtn;
+    public Button mToggleMATLABBtn;
 
     // House-keeping
     private DeviceActivity mActivity;
@@ -49,6 +55,13 @@ public class DeviceView extends Fragment {
         mSensornodeId = (TextView) view.findViewById(R.id.sensornode_id);
         mBatteryLevel = (TextView) view.findViewById(R.id.battery_level);
 
+        // For MATLAB
+        mAccelRadioBtn = (RadioButton) view.findViewById(R.id.accel_matlab);
+        mMagRadioBtn = (RadioButton) view.findViewById(R.id.mag_matlab);
+        mGyroRadioBtn = (RadioButton) view.findViewById(R.id.gyro_matlab);
+        mBaroRadioBtn = (RadioButton) view.findViewById(R.id.baro_matlab);
+        mToggleMATLABBtn = (Button) view.findViewById(R.id.toggle_matlab);
+
         // Notify activity that UI has been inflated
         mActivity.onViewInflated(view);
 
@@ -63,6 +76,10 @@ public class DeviceView extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
+    }
+
+    public void setMatlabButtonText(String text) {
+        mToggleMATLABBtn.setText(text);
     }
 
 }

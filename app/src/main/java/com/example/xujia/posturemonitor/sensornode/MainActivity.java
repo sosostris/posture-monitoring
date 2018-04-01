@@ -140,7 +140,9 @@ public class MainActivity extends ViewPagerActivity {
                     if (!deviceInfoExists(device.getAddress())) {
                         if (deviceIsSensornodeOrSensortag(device)) {
                             // New sensornode or sensortag
-                            BleDeviceInfo deviceInfo = createDeviceInfo(device, rssi, device.getAddress());
+                            String address = device.getAddress();
+                            String deviceName = PostureMonitorApplication.DEVICE_LIST.get(address);
+                            BleDeviceInfo deviceInfo = createDeviceInfo(device, rssi, address, deviceName);
                             addDevice(deviceInfo);
                         }
                         if (mDeviceInfoList.size()== PostureMonitorApplication.NUMBER_OF_SENSORNODE) {
@@ -181,8 +183,8 @@ public class MainActivity extends ViewPagerActivity {
         return false;
     }
 
-    private BleDeviceInfo createDeviceInfo(BluetoothDevice device, int rssi, String address) {
-        return new BleDeviceInfo(device, rssi, address);
+    private BleDeviceInfo createDeviceInfo(BluetoothDevice device, int rssi, String address, String name) {
+        return new BleDeviceInfo(device, rssi, address, name);
     }
 
     List<BleDeviceInfo> getDeviceInfoList() {

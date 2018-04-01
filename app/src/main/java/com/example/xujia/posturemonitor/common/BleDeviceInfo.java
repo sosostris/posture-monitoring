@@ -11,11 +11,13 @@ public class BleDeviceInfo {
     private BluetoothDevice mBtDevice;
     private int mRssi;
     private String mAddress;
+    private String mName;
 
-    public BleDeviceInfo(BluetoothDevice device, int rssi, String address) {
+    public BleDeviceInfo(BluetoothDevice device, int rssi, String address, String name) {
         mBtDevice = device;
         mRssi = rssi;
         mAddress = address;
+        mName = name;
     }
 
     public BluetoothDevice getBluetoothDevice() {
@@ -28,6 +30,10 @@ public class BleDeviceInfo {
 
     public String getAddress() {
         return mAddress;
+    }
+
+    public String getName() {
+        return mName;
     }
 
     public void updateRssi(int rssiValue) {

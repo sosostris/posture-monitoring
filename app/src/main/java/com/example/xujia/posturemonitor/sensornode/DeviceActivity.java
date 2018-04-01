@@ -20,6 +20,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.widget.Button;
+import android.widget.RadioButton;
 
 import com.example.xujia.posturemonitor.R;
 import com.example.xujia.posturemonitor.common.BluetoothLeService;
@@ -38,7 +40,7 @@ import java.util.Date;
     private static String TAG = "DeviceActivity";
 
     // TCP connection with MATLAB
-    private static final String host = "192.168.0.108";
+    private static final String host = "192.168.1.150";
     private static final int PORT = 30000;
     private Socket socket;
     private OutputStream os;
@@ -58,6 +60,10 @@ import java.util.Date;
     private BluetoothDevice mDevice;
     private int mDevicePosition;
     private boolean mIsReceiving = false;
+
+    // MATLAB
+    private boolean mIsStreaming;
+    private String currentStreamingSensorType = null;
 
     // Temp
     private String batteryString = "";
@@ -94,26 +100,8 @@ import java.util.Date;
         XmlResourceParser xpp = res.getXml(R.xml.gatt_uuid);
         new GattInfo(xpp);
 
-        Thread matlabWorker = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    socket = new Socket(host, PORT);
-                    if (socket != null) {
-                        try {
-                            os = socket.getOutputStream();
-                            dos = new DataOutputStream(os);
-                            Log.d(TAG, "Connected with MATLAB server");
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        matlabWorker.start();
+        mIsStreaming = false;
+
     }
 
     @Override
@@ -126,6 +114,9 @@ import java.util.Date;
             }
             if (os != null) {
                 os.close();
+            }
+            if (socket != null) {
+                socket.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -150,16 +141,6 @@ import java.util.Date;
 //            registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
 //            mIsReceiving = true;
 //        }
-
-        if (socket != null) {
-            try {
-                os = socket.getOutputStream();
-                dos = new DataOutputStream(os);
-                Log.d(TAG, "OnResume: Connected with MATLAB server");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     @Override
@@ -173,6 +154,9 @@ import java.util.Date;
             }
             if (os != null) {
                 os.close();
+            }
+            if (socket != null) {
+                socket.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -200,7 +184,7 @@ import java.util.Date;
         Log.d(TAG, "Gatt view ready");
         // Set title bar to device name
         setTitle(mDevice.getName() + " " + mDevice.getAddress());
-        mDeviceView.mSensornodeId.setText(ScanView.sensernodeIds[mDevicePosition]);
+        mDeviceView.mSensornodeId.setText(PostureMonitorApplication.DEVICE_LIST.get(mDevice.getAddress()));
         // mBtLeService.getBtGatt(mDevicePosition).readCharacteristic(MainActivity.mBatteryC);
     }
 
@@ -279,20 +263,75 @@ import java.util.Date;
             if (MainActivity.ACTION_ACC.equals(action)) {
                 mDeviceView.mAccelData.setText("x: " + ScanView.currentAccelX[mDevicePosition] + "\ny: " +
                         ScanView.currentAccelY[mDevicePosition] + "\nz: " + ScanView.currentAccelZ[mDevicePosition]);
+                sendDataToMATLAB(mDevicePosition, "acc");
             } else if (MainActivity.ACTION_MAG.equals(action)) {
                 mDeviceView.mMagData.setText("x:"+ ScanView.currentMagX[mDevicePosition] + "\ny: " +
                         ScanView.currentMagY[mDevicePosition] + "\nz: " + ScanView.currentMagZ[mDevicePosition] );
+                sendDataToMATLAB(mDevicePosition, "mag");
             } else if (MainActivity.ACTION_GYR.equals(action)) {
                 mDeviceView.mGyroData.setText("x: "+ ScanView.currentGyroX[mDevicePosition] + "\ny: " +
                         ScanView.currentGyroY[mDevicePosition] + "\nz: " + ScanView.currentGyroZ[mDevicePosition] );
+                sendDataToMATLAB(mDevicePosition, "gyr");
             } else if (MainActivity.ACTION_BAR.equals(action)) {
                 mDeviceView.mBaroData.setText(Double.toString(ScanView.currentBaro[mDevicePosition]));
+                sendDataToMATLAB(mDevicePosition, "bar");
             } else if (MainActivity.ACTION_BAT.equals(action)) {
                 mDeviceView.mBatteryLevel.setText(ScanView.currentBatteryLevel[mDevicePosition]);
             }
 
         }
     };
+
+    // 0 = Accelerometer, 1 = Magnetometer, 2 = Gyroscope, 3 = Barometer
+    private void sendDataToMATLAB(int position, String sensorType) {
+        if (!sensorType.equals(currentStreamingSensorType)) {
+            return;
+        }
+        byte[] newData = new byte[7];
+        switch (sensorType) {
+            case "acc":
+                newData[0] = 0;
+                newData[1] = ScanView.currentAccelXByte[position][0];
+                newData[2] = ScanView.currentAccelXByte[position][1];
+                newData[3] = ScanView.currentAccelYByte[position][0];
+                newData[4] = ScanView.currentAccelYByte[position][1];
+                newData[5] = ScanView.currentAccelZByte[position][0];
+                newData[6] = ScanView.currentAccelZByte[position][1];
+                break;
+            case "mag":
+                newData[0] = 1;
+                newData[1] = ScanView.currentMagXByte[position][0];
+                newData[2] = ScanView.currentMagYByte[position][1];
+                newData[3] = ScanView.currentMagYByte[position][0];
+                newData[4] = ScanView.currentMagYByte[position][1];
+                newData[5] = ScanView.currentMagZByte[position][0];
+                newData[6] = ScanView.currentMagZByte[position][1];
+                break;
+            case "gyr":
+                newData[0] = 2;
+                newData[1] = ScanView.currentGyroXByte[position][0];
+                newData[2] = ScanView.currentGyroXByte[position][1];
+                newData[3] = ScanView.currentGyroYByte[position][0];
+                newData[4] = ScanView.currentGyroYByte[position][1];
+                newData[5] = ScanView.currentGyroZByte[position][0];
+                newData[6] = ScanView.currentGyroZByte[position][1];
+                break;
+            case "bar":
+                newData[0] = 3;
+                newData[1] = ScanView.currentBaroByte[position][0];
+                newData[2] = ScanView.currentBaroByte[position][1];
+                newData[3] = ScanView.currentBaroByte[position][2];
+                break;
+        }
+        if (dos != null) {
+            try {
+                dos.write(newData);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     // Activity result handling
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -350,4 +389,66 @@ import java.util.Date;
         return reversedBytes;
     }
 
+    public void onMatlabRadioButtonClicked(View view) {
+        // Is the button now checked?
+        boolean checked = ((RadioButton) view).isChecked();
+
+        // Check which radio button was clicked
+        switch(view.getId()) {
+            case R.id.accel_matlab:
+                currentStreamingSensorType = "acc";
+                break;
+            case R.id.mag_matlab:
+                currentStreamingSensorType = "mag";
+                break;
+            case R.id.gyro_matlab:
+                currentStreamingSensorType = "gyr";
+                break;
+            case R.id.baro_matlab:
+                currentStreamingSensorType = "bar";
+                break;
+        }
+    }
+
+    public void toggleMatlabStreaming(View view) {
+        mIsStreaming = !mIsStreaming;
+        if (mIsStreaming) {
+            mDeviceView.setMatlabButtonText("Stop streaming");
+            Thread matlabWorker = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        socket = new Socket(host, PORT);
+                        if (socket != null) {
+                            try {
+                                os = socket.getOutputStream();
+                                dos = new DataOutputStream(os);
+                                Log.d(TAG, "Connected with MATLAB server");
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            matlabWorker.start();
+        } else {
+            mDeviceView.setMatlabButtonText("Start streaming");
+            try {
+                if (dos != null) {
+                    dos.close();
+                }
+                if (os != null) {
+                    os.close();
+                }
+                if (socket != null) {
+                    socket.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
