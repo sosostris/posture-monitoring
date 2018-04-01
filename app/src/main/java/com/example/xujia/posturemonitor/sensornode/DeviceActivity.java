@@ -38,6 +38,8 @@ import java.util.Date;
 
     // Log
     private static String TAG = "DeviceActivity";
+    private static final int BLE113_SENSORNODE = 0;
+    private static final int CC2650_SENSORTAG = 1;
 
     // TCP connection with MATLAB
     private static final String host = "192.168.1.150";
@@ -121,6 +123,8 @@ import java.util.Date;
         } catch (IOException e) {
             e.printStackTrace();
         }
+        mIsStreaming = false;
+        currentStreamingSensorType = null;
 
 //        if (mIsReceiving) {
 //            unregisterReceiver(mGattUpdateReceiver);
@@ -161,6 +165,8 @@ import java.util.Date;
         } catch (IOException e) {
             e.printStackTrace();
         }
+        mIsStreaming = false;
+        currentStreamingSensorType = null;
     }
 
 //    private static IntentFilter makeGattUpdateIntentFilter() {
@@ -282,45 +288,50 @@ import java.util.Date;
         }
     };
 
-    // 0 = Accelerometer, 1 = Magnetometer, 2 = Gyroscope, 3 = Barometer
+    /*
+     The firs byte is to identify sensortag or sensornode, 0 = BLE113 Sensornode, 1 = CC2650 Sensortag
+     The second byte is used to identify sensor type
+     0 = Accelerometer, 1 = Magnetometer, 2 = Gyroscope, 3 = Barometer
+    */
     private void sendDataToMATLAB(int position, String sensorType) {
         if (!sensorType.equals(currentStreamingSensorType)) {
             return;
         }
-        byte[] newData = new byte[7];
+        byte[] newData = new byte[8];
+        newData[0] = (byte) ScanView.deviceModel[position];
         switch (sensorType) {
             case "acc":
-                newData[0] = 0;
-                newData[1] = ScanView.currentAccelXByte[position][0];
-                newData[2] = ScanView.currentAccelXByte[position][1];
-                newData[3] = ScanView.currentAccelYByte[position][0];
-                newData[4] = ScanView.currentAccelYByte[position][1];
-                newData[5] = ScanView.currentAccelZByte[position][0];
-                newData[6] = ScanView.currentAccelZByte[position][1];
+                newData[1] = 0;
+                newData[2] = ScanView.currentAccelXByte[position][0];
+                newData[3] = ScanView.currentAccelXByte[position][1];
+                newData[4] = ScanView.currentAccelYByte[position][0];
+                newData[5] = ScanView.currentAccelYByte[position][1];
+                newData[6] = ScanView.currentAccelZByte[position][0];
+                newData[7] = ScanView.currentAccelZByte[position][1];
                 break;
             case "mag":
-                newData[0] = 1;
-                newData[1] = ScanView.currentMagXByte[position][0];
-                newData[2] = ScanView.currentMagYByte[position][1];
-                newData[3] = ScanView.currentMagYByte[position][0];
-                newData[4] = ScanView.currentMagYByte[position][1];
-                newData[5] = ScanView.currentMagZByte[position][0];
-                newData[6] = ScanView.currentMagZByte[position][1];
+                newData[1] = 1;
+                newData[2] = ScanView.currentMagXByte[position][0];
+                newData[3] = ScanView.currentMagYByte[position][1];
+                newData[4] = ScanView.currentMagYByte[position][0];
+                newData[5] = ScanView.currentMagYByte[position][1];
+                newData[6] = ScanView.currentMagZByte[position][0];
+                newData[7] = ScanView.currentMagZByte[position][1];
                 break;
             case "gyr":
-                newData[0] = 2;
-                newData[1] = ScanView.currentGyroXByte[position][0];
-                newData[2] = ScanView.currentGyroXByte[position][1];
-                newData[3] = ScanView.currentGyroYByte[position][0];
-                newData[4] = ScanView.currentGyroYByte[position][1];
-                newData[5] = ScanView.currentGyroZByte[position][0];
-                newData[6] = ScanView.currentGyroZByte[position][1];
+                newData[1] = 2;
+                newData[2] = ScanView.currentGyroXByte[position][0];
+                newData[3] = ScanView.currentGyroXByte[position][1];
+                newData[4] = ScanView.currentGyroYByte[position][0];
+                newData[5] = ScanView.currentGyroYByte[position][1];
+                newData[6] = ScanView.currentGyroZByte[position][0];
+                newData[7] = ScanView.currentGyroZByte[position][1];
                 break;
             case "bar":
-                newData[0] = 3;
-                newData[1] = ScanView.currentBaroByte[position][0];
-                newData[2] = ScanView.currentBaroByte[position][1];
-                newData[3] = ScanView.currentBaroByte[position][2];
+                newData[1] = 3;
+                newData[2] = ScanView.currentBaroByte[position][0];
+                newData[3] = ScanView.currentBaroByte[position][1];
+                newData[4] = ScanView.currentBaroByte[position][2];
                 break;
         }
         if (dos != null) {

@@ -21,6 +21,7 @@ import android.widget.Toast;
 import com.android.volley.RequestQueue;
 import com.example.xujia.posturemonitor.R;
 import com.example.xujia.posturemonitor.common.BleDeviceInfo;
+import com.example.xujia.posturemonitor.common.ConfigDialog;
 import com.example.xujia.posturemonitor.util.CustomToast;
 
 import java.util.ArrayList;
@@ -98,6 +99,9 @@ public class MainActivity extends ViewPagerActivity {
         // requestQueue = Volley.newRequestQueue(this);
 
         initBroadcastTimerTask();
+
+        ConfigDialog configDialog = new ConfigDialog();
+        configDialog.show(getFragmentManager(), TAG);
     }
 
     public void onBtnClick(View view) {
@@ -148,6 +152,13 @@ public class MainActivity extends ViewPagerActivity {
                         if (mDeviceInfoList.size()== PostureMonitorApplication.NUMBER_OF_SENSORNODE) {
                             CustomToast.middleBottom(mThis, "All devices have been found.");
                             stopScan();
+                            for (int i=0; i<mDeviceInfoList.size(); i++) {
+                                if (mDeviceInfoList.get(i).getAddress().equals(PostureMonitorApplication.DEVICE_ADDRESS_LIST[2])) {
+                                    ScanView.deviceModel[i] = 0;    // 0 for BLE113 Sensornode
+                                } else {
+                                    ScanView.deviceModel[i] = 1;    // 1 for CC2650 Sensortag
+                                }
+                            }
                             mScanView.showConnectAllButton();
                             showBusyIndicator(true);
                         }

@@ -12,6 +12,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.example.xujia.posturemonitor.common.BluetoothLeService;
+import com.example.xujia.posturemonitor.common.ConfigDialog;
 import com.example.xujia.posturemonitor.util.CustomToast;
 
 import java.util.HashMap;
@@ -25,7 +26,7 @@ public class PostureMonitorApplication extends Application {
 
     private static final String TAG = "Application";
 
-    public static final int NUMBER_OF_SENSORNODE = 3;
+    public static int NUMBER_OF_SENSORNODE = 3;
     public static Map<String, String> DEVICE_LIST = null;
     public static final String[] DEVICE_ADDRESS_LIST = {"B0:B4:48:BE:18:84", "B0:B4:48:BD:0C:84", "00:07:80:2D:9E:F2"};    // last one is sensornode
     public static final String[] DEVICE_NAME_LIST = {"SN0001", "SN0002", "SN0003"};

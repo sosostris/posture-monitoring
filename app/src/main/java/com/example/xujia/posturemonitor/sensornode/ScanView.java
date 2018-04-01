@@ -86,6 +86,7 @@ public class ScanView extends Fragment {
     public static double[] currentBaro;
 
     // For MATLAB
+    public static int[] deviceModel;
     public static byte[][] currentAccelXByte;
     public static byte[][] currentAccelYByte;
     public static byte[][] currentAccelZByte;
@@ -566,6 +567,9 @@ public class ScanView extends Fragment {
     // Barometer from CC2650 has 6 bytes; bytes 0-2 is temperature; bytes 3-5 is barometer
     private double getPressureDataCC2650(byte[] value, int position) {
         Integer rawValue = twentyFourBitUnsignedAtOffset(value, 3);
+        currentBaroByte[position][0] = value[5];
+        currentBaroByte[position][1] = value[4];
+        currentBaroByte[position][2] = value[3];
         return rawValue / 100f;
     }
 
@@ -576,7 +580,7 @@ public class ScanView extends Fragment {
         for (int i=1; i<4; i++) {
             valueInOrder[i] = value[3-i];
         }
-        writeToMATLABBytes(valueInOrder, position, "baro");
+        writeToMATLABBytesBLE113(valueInOrder, position, "bar");
         int correctData = byteToInt(valueInOrder);
         int hPa = correctData / 4096;
         return hPa;
@@ -592,7 +596,7 @@ public class ScanView extends Fragment {
 
     private void getGyroDataBLE113(byte[] value, int position) {
         byte[] dataInOrder = getReversedBytes(value, 6);
-        writeToMATLABBytes(dataInOrder, position, "gyr");
+        writeToMATLABBytesBLE113(dataInOrder, position, "gyr");
         int z = (dataInOrder[0] << 8) | dataInOrder[1];
         int y = (dataInOrder[2] << 8) | dataInOrder[3];
         int x = (dataInOrder[4] << 8) | dataInOrder[5];
@@ -604,7 +608,7 @@ public class ScanView extends Fragment {
 
     private void getAccelDataBLE113(byte[] value, int position) {
         byte[] dataInOrder = getReversedBytes(value, 6);
-        writeToMATLABBytes(dataInOrder, position, "acc");
+        writeToMATLABBytesBLE113(dataInOrder, position, "acc");
         int z = (dataInOrder[0] << 8) | dataInOrder[1];
         int y = (dataInOrder[2] << 8) | dataInOrder[3];
         int x = (dataInOrder[4] << 8) | dataInOrder[5];
@@ -623,7 +627,7 @@ public class ScanView extends Fragment {
      */
     private void getMagDataBLE113(byte[] value, int position) {
         byte[] dataInOrder = getReversedBytes(value, 6);
-        writeToMATLABBytes(dataInOrder, position, "mag");
+        writeToMATLABBytesBLE113(dataInOrder, position, "mag");
         int z = (dataInOrder[0] << 8) | dataInOrder[1];
         int y = (dataInOrder[2] << 8) | dataInOrder[3];
         int x = (dataInOrder[4] << 8) | dataInOrder[5];
@@ -660,33 +664,85 @@ public class ScanView extends Fragment {
     }
 
     private void getGyroDataCC2650(byte[] value, int position) {
-        int x = (value[1] << 8) + value[0];
+        int x = (value[1] << 8) | value[0];
         currentGyroX[position] = (x * 1.0) * 500 / 65536;    // (x * 1.0) / (65536 / 500)
-        int y = (value[3] << 8) + value[2];
+        int y = (value[3] << 8) | value[2];
         currentGyroY[position] = (y * 1.0) * 500 / 65536;
-        int z = (value[5] << 8) + value[4];
+        int z = (value[5] << 8) | value[4];
         currentGyroZ[position] = (z * 1.0) * 500 / 65536;
+        currentGyroXByte[position][0] = value[1];
+        currentGyroXByte[position][1] = value[0];
+        currentGyroYByte[position][0] = value[3];
+        currentGyroYByte[position][1] = value[2];
+        currentGyroZByte[position][0] = value[5];
+        currentGyroZByte[position][1] = value[4];
     }
 
     private void getAccelDataCC2650(byte[] value, int position) {
-        int x = (value[7] << 8) + value[6];
+        int x = (value[7] << 8) | value[6];
         currentAccelX[position] = (x * 1.0) / 8192;    // 32768/4
-        int y = (value[9] << 8) + value[8];
+        int y = (value[9] << 8) | value[8];
         currentAccelY[position] = (y * 1.0) / 8192;
-        int z = (value[11] << 8) + value[10];
+        int z = (value[11] << 8) | value[10];
         currentAccelZ[position] = (z * 1.0) / 8192;
+        currentAccelXByte[position][0] = value[7];
+        currentAccelXByte[position][1] = value[6];
+        currentAccelYByte[position][0] = value[9];
+        currentAccelYByte[position][1] = value[8];
+        currentAccelZByte[position][0] = value[11];
+        currentAccelZByte[position][1] = value[10];
     }
 
     private void getMagDataCC2650(byte[] value, int position) {
-        int x = (value[13] << 8) + value[12];
+        int x = (value[13] << 8) | value[12];
         currentMagX[position] = x * 1.0;
-        int y = (value[15] << 8) + value[14];
+        int y = (value[15] << 8) | value[14];
         currentMagY[position] = y * 1.0;
-        int z = (value[17] << 8) + value[16];
+        int z = (value[17] << 8) | value[16];
         currentMagZ[position] = z * 1.0;
+        currentMagXByte[position][0] = value[13];
+        currentMagXByte[position][1] = value[12];
+        currentMagYByte[position][0] = value[15];
+        currentMagYByte[position][1] = value[14];
+        currentMagZByte[position][0] = value[17];
+        currentMagZByte[position][1] = value[16];
     }
 
-    private void writeToMATLABBytes(byte[] data, int position, String sensorType) {
+    private void writeToMATLABBytesBLE113(byte[] data, int position, String sensorType) {
+        switch (sensorType) {
+            case "acc":
+                currentAccelZByte[position][0] = data[0];
+                currentAccelZByte[position][1] = data[1];
+                currentAccelYByte[position][0] = data[2];
+                currentAccelYByte[position][1] = data[3];
+                currentAccelXByte[position][0] = data[4];
+                currentAccelXByte[position][1] = data[5];
+                break;
+            case "mag":
+                currentMagZByte[position][0] = data[0];
+                currentMagZByte[position][1] = data[1];
+                currentMagYByte[position][0] = data[2];
+                currentMagYByte[position][1] = data[3];
+                currentMagXByte[position][0] = data[4];
+                currentMagXByte[position][1] = data[5];
+                break;
+            case "gyr":
+                currentGyroZByte[position][0] = data[0];
+                currentGyroZByte[position][1] = data[1];
+                currentGyroYByte[position][0] = data[2];
+                currentGyroYByte[position][1] = data[3];
+                currentGyroXByte[position][0] = data[4];
+                currentGyroXByte[position][1] = data[5];
+                break;
+            case "bar":
+                currentBaroByte[position][0] = data[1];
+                currentBaroByte[position][1] = data[2];
+                currentBaroByte[position][2] = data[3];
+        }
+
+    }
+
+    private void writeToMATLABBytesCC2650(byte[] data, int position, String sensorType) {
         switch (sensorType) {
             case "acc":
                 currentAccelZByte[position][0] = data[0];
@@ -920,6 +976,7 @@ public class ScanView extends Fragment {
     }
 
     private void initMATLABData() {
+        deviceModel = new int[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         currentAccelXByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
         currentAccelYByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
         currentAccelZByte = new byte[PostureMonitorApplication.NUMBER_OF_SENSORNODE][2];
