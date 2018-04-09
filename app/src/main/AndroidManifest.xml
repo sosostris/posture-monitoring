@@ -27,13 +27,17 @@
         <service
             android:name="com.example.xujia.posturemonitor.common.BluetoothLeService"
             android:enabled="true" />
-        <activity android:name=".sensornode.MainActivity">
+        <activity android:name="com.example.xujia.posturemonitor.sensornode.ConfigActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="com.example.xujia.posturemonitor.sensornode.MainActivity"
+            android:parentActivityName="com.example.xujia.posturemonitor.sensornode.ConfigActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="unspecified" />
         <activity
             android:name="com.example.xujia.posturemonitor.sensornode.DeviceActivity"
             android:parentActivityName="com.example.xujia.posturemonitor.sensornode.MainActivity"

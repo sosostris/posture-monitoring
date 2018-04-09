@@ -7,6 +7,9 @@
         android:visibility="invisible"
         android:showAsAction="always" />
     <item
+        android:id="@+id/opt_config_sys"
+        android:title="Config system"/>
+    <item
         android:id="@+id/opt_about"
         android:title="About"/>
     <item

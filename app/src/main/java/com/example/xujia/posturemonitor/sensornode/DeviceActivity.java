@@ -6,7 +6,6 @@ package com.example.xujia.posturemonitor.sensornode;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -18,10 +17,11 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
-import android.widget.Button;
 import android.widget.RadioButton;
+import android.widget.Toast;
 
 import com.example.xujia.posturemonitor.R;
 import com.example.xujia.posturemonitor.common.BluetoothLeService;
@@ -31,8 +31,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.Calendar;
-import java.util.Date;
 
 @SuppressLint("InflateParams") public class DeviceActivity extends ViewPagerActivity implements SensorEventListener {
 
@@ -42,8 +40,6 @@ import java.util.Date;
     private static final int CC2650_SENSORTAG = 1;
 
     // TCP connection with MATLAB
-    private static final String host = "192.168.1.150";
-    private static final int PORT = 30000;
     private Socket socket;
     private OutputStream os;
     private DataOutputStream dos;
@@ -80,13 +76,30 @@ import java.util.Date;
     }
 
     @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle presses on the action bar items
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                onBackPressed();
+                return true;
+            case R.id.opt_exit:
+                Toast.makeText(this, "Exit...", Toast.LENGTH_SHORT).show();
+                finish();
+                break;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+        return true;
+    }
+
+    @Override
     public void onCreate(Bundle savedInstanceState) {
         requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
         super.onCreate(savedInstanceState);
         Intent intent = getIntent();
 
         // registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
-        registerReceiver(mDataUpdateReceiver, makeDataUpdateIntentFilter());
+        // registerReceiver(mDataUpdateReceiver, makeDataUpdateIntentFilter());
 
         // BLE
         // mBtLeService = BluetoothLeService.getInstance();
@@ -130,6 +143,7 @@ import java.util.Date;
 //            unregisterReceiver(mGattUpdateReceiver);
 //            mIsReceiving = false;
 //        }
+        // unregisterReceiver(mDataUpdateReceiver);
 
         // View should be started again from scratch
         this.mDeviceView = null;
@@ -141,6 +155,7 @@ import java.util.Date;
     protected void onResume() {
         // Log.d(TAG, "onResume");
         super.onResume();
+        // registerReceiver(mDataUpdateReceiver, makeDataUpdateIntentFilter());
 //        if (!mIsReceiving) {
 //            registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
 //            mIsReceiving = true;
@@ -167,6 +182,8 @@ import java.util.Date;
         }
         mIsStreaming = false;
         currentStreamingSensorType = null;
+
+        unregisterReceiver(mDataUpdateReceiver);
     }
 
 //    private static IntentFilter makeGattUpdateIntentFilter() {
@@ -190,7 +207,8 @@ import java.util.Date;
         Log.d(TAG, "Gatt view ready");
         // Set title bar to device name
         setTitle(mDevice.getName() + " " + mDevice.getAddress());
-        mDeviceView.mSensornodeId.setText(PostureMonitorApplication.DEVICE_LIST.get(mDevice.getAddress()));
+        mDeviceView.mSensornodeId.setText(PostureMonitorApplication.ADDRESS_NAME_MAP.get(mDevice.getAddress()));
+        registerReceiver(mDataUpdateReceiver, makeDataUpdateIntentFilter());
         // mBtLeService.getBtGatt(mDevicePosition).readCharacteristic(MainActivity.mBatteryC);
     }
 
@@ -429,7 +447,7 @@ import java.util.Date;
                 @Override
                 public void run() {
                     try {
-                        socket = new Socket(host, PORT);
+                        socket = new Socket(PostureMonitorApplication.MATLAB_IP, PostureMonitorApplication.MATLAB_PORT);
                         if (socket != null) {
                             try {
                                 os = socket.getOutputStream();
@@ -462,4 +480,5 @@ import java.util.Date;
             }
         }
     }
+
 }

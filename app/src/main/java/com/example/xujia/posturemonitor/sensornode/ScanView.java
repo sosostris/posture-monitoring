@@ -85,6 +85,10 @@ public class ScanView extends Fragment {
     public static double[] currentGyroZ;
     public static double[] currentBaro;
 
+    // TCP connection with Java Bigtable server
+    public static Socket btSocket;
+    public static PrintWriter btOut;
+
     // For MATLAB
     public static int[] deviceModel;
     public static byte[][] currentAccelXByte;
@@ -117,12 +121,6 @@ public class ScanView extends Fragment {
     private BluetoothGattCharacteristic mBarometerConfigC;
     private BluetoothGattCharacteristic mMovDataC;
     private BluetoothGattCharacteristic mMovConfigC;
-
-    // TCP connection with Java Bigtable server
-    private static final String host = "192.168.1.33";
-    private static final int PORT = 8000;
-    private Socket btSocket;
-    private PrintWriter btOut;
 
     private BluetoothGatt mBtGatt;
     private boolean connecetSingleSensor = false;
@@ -161,13 +159,13 @@ public class ScanView extends Fragment {
         mBtnStream.setOnClickListener(v -> {
             if (streaming) {
                 stopTimer();
-                mBtnStream.setText("Start streaming data");
+                mBtnStream.setText("Start uploading data");
                 Log.d(TAG, "Timer stopped");
                 streaming = false;
             } else {
                 startTimer();
                 Log.d(TAG, "Timer started");
-                mBtnStream.setText("Stop streaming data");
+                mBtnStream.setText("Stop uploading data");
                 streaming = true;
             }
         });
@@ -421,6 +419,7 @@ public class ScanView extends Fragment {
                 }
                 if (mBluetoothLeService.numConnectedDevices() == 0) {
                     mBtnStream.setVisibility(View.GONE);
+                    mBtnStream.setText("Start uploading data");
                     mBtnConnectAll.setText("Connect all");
                 }
 
@@ -440,7 +439,7 @@ public class ScanView extends Fragment {
                     }
                     for (BluetoothGattService service : mServiceList) {
                         // If device is BLE113 sensornode
-                        if (address.equals(PostureMonitorApplication.DEVICE_ADDRESS_LIST[2])) {
+                        if (PostureMonitorApplication.ADDRESS_TYPE_MAP.get(address).equals("BLE")) {
                             if (!service.getUuid().toString().contains("1800")) {
                                 List<BluetoothGattCharacteristic> chars = service.getCharacteristics();
                                 for (BluetoothGattCharacteristic c : chars) {
@@ -790,6 +789,7 @@ public class ScanView extends Fragment {
         }
         try {
             if (btOut != null) {
+                btOut.println("ex");
                 btOut.close();
             }
             if (btSocket != null) {
@@ -805,7 +805,7 @@ public class ScanView extends Fragment {
             @Override
             public void run() {
                 try {
-                    btSocket = new Socket(host, PORT);
+                    btSocket = new Socket(PostureMonitorApplication.JAVA_IP, PostureMonitorApplication.JAVA_PORT_STREAM);
                     if (btSocket != null) {
                         try {
                             btOut = new PrintWriter(btSocket.getOutputStream(), true);
@@ -886,7 +886,7 @@ public class ScanView extends Fragment {
                                 continue;
                             }
                             try {
-                                jsonBody.put("SensornodeId", PostureMonitorApplication.DEVICE_LIST.get(PostureMonitorApplication.DEVICE_ADDRESS_LIST[i]));
+                                jsonBody.put("SensornodeId", MainActivity.mDeviceInfoList.get(i).getName());
                                 jsonBody.put("Timestamp", timestamp);
                                 jsonBody.put("Baro", currentBaro[i]);
                                 jsonBody.put("AccelX", currentAccelX[i]);
@@ -924,7 +924,7 @@ public class ScanView extends Fragment {
                             }
                             long timestamp = new Timestamp(System.currentTimeMillis()).getTime();
                             StringBuilder sb = new StringBuilder();
-                            sb.append(PostureMonitorApplication.DEVICE_LIST.get(PostureMonitorApplication.DEVICE_ADDRESS_LIST[i]) + " ");
+                            sb.append(MainActivity.mDeviceInfoList.get(i).getName() + " ");
                             sb.append(timestamp + " ");
                             sb.append(currentAccelX[i] + " ");
                             sb.append(currentAccelY[i] + " ");
@@ -936,6 +936,7 @@ public class ScanView extends Fragment {
                             sb.append(currentGyroY[i] + " ");
                             sb.append(currentGyroZ[i] + " ");
                             sb.append(currentBaro[i] + " ");
+                            sb.append(MainActivity.mDeviceInfoList.get(i).getBody() + " ");
                             currentBaro[i] = -8888;
                             if (btOut != null) {
                                 btOut.println(sb.toString());

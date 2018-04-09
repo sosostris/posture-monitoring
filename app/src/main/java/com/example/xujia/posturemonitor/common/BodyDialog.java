@@ -8,25 +8,21 @@ import android.os.Bundle;
 
 import com.example.xujia.posturemonitor.sensornode.PostureMonitorApplication;
 
-public class ConfigDialog extends DialogFragment {
-
-    int mSelectedItem;
+public class BodyDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        String[] choices = {"1", "2", "3"};
         // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setTitle("Configure number of sensornodes:")
-                .setSingleChoiceItems(choices, -1,
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                mSelectedItem = which;
-                            }
-                        })
+        String message = "";
+        for (int i=0; i< PostureMonitorApplication.BODY_LIST_USER.size(); i++) {
+            message = (i == PostureMonitorApplication.BODY_LIST_USER.size() - 1) ?
+                message + "    " + PostureMonitorApplication.BODY_LIST_USER.get(i) :
+                    message + "    " + PostureMonitorApplication.BODY_LIST_USER.get(i) + "\n";
+        }
+        builder.setTitle("View wearing positions")
+                .setMessage(message)
                 .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
-                        PostureMonitorApplication.NUMBER_OF_SENSORNODE = Integer.valueOf(choices[mSelectedItem]);
                     }
                 });
         // Create the AlertDialog object and return it

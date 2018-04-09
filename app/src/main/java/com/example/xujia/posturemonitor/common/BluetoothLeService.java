@@ -36,8 +36,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class BluetoothLeService extends Service {
     static final String TAG = "BluetoothLeService";
 
-    private int numberOfSensornode = PostureMonitorApplication.NUMBER_OF_SENSORNODE;
-
     public final static String ACTION_GATT_CONNECTED = "com.example.xujia.posturemonitor.common.ACTION_GATT_CONNECTED";
     public final static String ACTION_GATT_DISCONNECTED = "com.example.xujia.posturemonitor.common.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "com.example.xujia.posturemonitor.common.ACTION_GATT_SERVICES_DISCOVERED";
@@ -99,7 +97,7 @@ public class BluetoothLeService extends Service {
     /**
      * GATT client callbacks
      */
-    private MyBluetoothGattCallback[] myBluetoothGattCallbacks = new MyBluetoothGattCallback[numberOfSensornode];
+    public static MyBluetoothGattCallback[] myBluetoothGattCallbacks;
 //    private BluetoothGattCallback mGattCallbacks0 = new BluetoothGattCallback() {
 //
 //        @Override
@@ -534,13 +532,13 @@ public class BluetoothLeService extends Service {
         if (connectionState == BluetoothProfile.STATE_DISCONNECTED) {
 
             // Previously connected device. Try to reconnect.
-            if (mBluetoothGatts[position] != null) {
-                if (mBluetoothGatts[position].connect()) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
+//            if (mBluetoothGatts[position] != null) {
+//                if (mBluetoothGatts[position].connect()) {
+//                    return true;
+//                } else {
+//                    return false;
+//                }
+//            }
 
             if (device == null) {
                 // Log.w(TAG, "Device not found.  Unable to connect.");
@@ -861,7 +859,7 @@ public class BluetoothLeService extends Service {
         return -3; // Set notification to android was wrong ...
     }
 
-    private class MyBluetoothGattCallback extends BluetoothGattCallback {
+    public class MyBluetoothGattCallback extends BluetoothGattCallback {
 
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {

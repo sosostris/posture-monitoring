@@ -12,10 +12,10 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.example.xujia.posturemonitor.common.BluetoothLeService;
-import com.example.xujia.posturemonitor.common.ConfigDialog;
 import com.example.xujia.posturemonitor.util.CustomToast;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,10 +26,22 @@ public class PostureMonitorApplication extends Application {
 
     private static final String TAG = "Application";
 
-    public static int NUMBER_OF_SENSORNODE = 3;
-    public static Map<String, String> DEVICE_LIST = null;
-    public static final String[] DEVICE_ADDRESS_LIST = {"B0:B4:48:BE:18:84", "B0:B4:48:BD:0C:84", "00:07:80:2D:9E:F2"};    // last one is sensornode
-    public static final String[] DEVICE_NAME_LIST = {"SN0001", "SN0002", "SN0003"};
+    public static int NUMBER_OF_SENSORNODE;
+    public static String JAVA_IP = null;    // 192.168.1.33
+    public static int JAVA_PORT_STREAM = 8000;
+    public static int JAVA_PORT_GENERAL = 8001;
+    public static String MATLAB_IP = null;    // 192.168.1.150
+    public static int MATLAB_PORT = 30000;
+    public static String USERNAME = null;
+    public static String[] DEVICE_ADDRESS_LIST = null;
+    public static String[] DEVICE_NAME_LIST = null;
+    public static String[] SN_BODY_LIST = null;
+    public static List<String> BODY_LIST_USER = null;
+    public static String[] DEVICE_TYPE_LIST = null;
+
+    public static Map<String, String> ADDRESS_NAME_MAP = null;
+    public static Map<String, String> ADDRESS_TYPE_MAP = null;
+    public static Map<String, String> ADDRESS_BODY_MAP = null;
 
     public BluetoothAdapter mBtAdapter = null;
     private BluetoothLeService mBluetoothLeService;
@@ -37,11 +49,6 @@ public class PostureMonitorApplication extends Application {
 
     @Override
     public void onCreate() {
-
-        DEVICE_LIST = new HashMap<>();
-        for (int i=0; i<NUMBER_OF_SENSORNODE; i++) {
-            DEVICE_LIST.put(DEVICE_ADDRESS_LIST[i], DEVICE_NAME_LIST[i]);
-        }
 
         // Check if Bluetooth is enabled
         mBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
@@ -84,6 +91,17 @@ public class PostureMonitorApplication extends Application {
         serviceStarted = bindService(bindIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
         if (!serviceStarted) {
             CustomToast.middleBottom(this, "Bind to BluetoothLeService failed");
+        }
+    }
+
+    public static void generateDeviceList() {
+        ADDRESS_NAME_MAP = new HashMap<>();
+        ADDRESS_TYPE_MAP = new HashMap<>();
+        ADDRESS_BODY_MAP = new HashMap<>();
+        for (int i=0; i<NUMBER_OF_SENSORNODE; i++) {
+            ADDRESS_NAME_MAP.put(DEVICE_ADDRESS_LIST[i], DEVICE_NAME_LIST[i]);
+            ADDRESS_TYPE_MAP.put(DEVICE_ADDRESS_LIST[i], DEVICE_TYPE_LIST[i]);
+            ADDRESS_BODY_MAP.put(DEVICE_ADDRESS_LIST[i], SN_BODY_LIST[i]);
         }
     }
 

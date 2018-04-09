@@ -43,7 +43,7 @@ public class AboutDialog extends Dialog {
         Resources res = mContext.getResources();
         String appName = res.getString(R.string.app_name);
         TextView title = (TextView) findViewById(R.id.title);
-        title.setText("About " + appName);
+        title.setText("JiajiaGiraffe " + appName);
 
         // Application info
         TextView head = (TextView) findViewById(R.id.header);

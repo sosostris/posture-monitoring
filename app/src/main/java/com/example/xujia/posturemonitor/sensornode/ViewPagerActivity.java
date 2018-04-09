@@ -1,9 +1,11 @@
 package com.example.xujia.posturemonitor.sensornode;
 
 import com.example.xujia.posturemonitor.R;
+
 import android.app.ActionBar;
 import android.app.Dialog;
 import android.app.FragmentTransaction;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -30,12 +32,13 @@ public class ViewPagerActivity extends FragmentActivity {
     // GUI
     protected static ViewPagerActivity mThis = null;
     protected SectionsPagerAdapter mSectionsPagerAdapter;
-    private ViewPager mViewPager;
+    protected ViewPager mViewPager;
     protected int mResourceFragmentPager;
     protected int mResourceIdPager;
     private int mCurrentTab = 0;
     protected Menu optionsMenu;
     private MenuItem refreshItem;
+    private Intent mConfigIntent;
 
     public ViewPagerActivity() {
         mThis = this;
@@ -191,6 +194,15 @@ public class ViewPagerActivity extends FragmentActivity {
                 return null;
             }
         }
+    }
+
+    private void configSystem() {
+        mConfigIntent = new Intent(this, ConfigActivity.class);
+        startActivity(mConfigIntent);
+    }
+
+    public void loadFragment(int n) {
+        mViewPager.setCurrentItem(n);
     }
 
 }

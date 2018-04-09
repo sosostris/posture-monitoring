@@ -1,6 +1,7 @@
 package com.example.xujia.posturemonitor.sensornode;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -15,13 +16,13 @@ import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
 import com.android.volley.RequestQueue;
 import com.example.xujia.posturemonitor.R;
 import com.example.xujia.posturemonitor.common.BleDeviceInfo;
-import com.example.xujia.posturemonitor.common.ConfigDialog;
 import com.example.xujia.posturemonitor.util.CustomToast;
 
 import java.util.ArrayList;
@@ -57,7 +58,7 @@ public class MainActivity extends ViewPagerActivity {
     private boolean mScanning = false;
     public static BluetoothManager mBluetoothManager;
     public BluetoothAdapter mBtAdapter;
-    private List<BleDeviceInfo> mDeviceInfoList;
+    public static List<BleDeviceInfo> mDeviceInfoList;
 
     // Handle BluetoothAdapter state change
     private IntentFilter mFilter;
@@ -66,6 +67,29 @@ public class MainActivity extends ViewPagerActivity {
         mThis = this;
         mResourceFragmentPager = R.layout.fragment_pager;
         mResourceIdPager = R.id.pager;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle presses on the action bar items
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                onBackPressed();
+                return true;
+            case R.id.opt_about:
+                onAbout();
+                break;
+            case R.id.opt_config_sys:
+                finish();
+                break;
+            case R.id.opt_exit:
+                Toast.makeText(this, "Exit...", Toast.LENGTH_SHORT).show();
+                finish();
+                break;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+        return true;
     }
 
     @Override
@@ -100,8 +124,28 @@ public class MainActivity extends ViewPagerActivity {
 
         initBroadcastTimerTask();
 
-        ConfigDialog configDialog = new ConfigDialog();
-        configDialog.show(getFragmentManager(), TAG);
+    }
+
+    @Override
+    public void onResume() {
+        Log.d(TAG, "onResume");
+        super.onResume();
+        // mActivity.registerReceiver(mReceiver, mFilter);
+    }
+
+    @Override
+    public void onPause() {
+        Log.d(TAG, "onPause");
+        // stopTimer();
+        super.onPause();
+        // mActivity.unregisterReceiver(mReceiver);
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.i(TAG, "onDestroy");
+        this.unregisterReceiver(mReceiver);
+        super.onDestroy();
     }
 
     public void onBtnClick(View view) {
@@ -145,15 +189,17 @@ public class MainActivity extends ViewPagerActivity {
                         if (deviceIsSensornodeOrSensortag(device)) {
                             // New sensornode or sensortag
                             String address = device.getAddress();
-                            String deviceName = PostureMonitorApplication.DEVICE_LIST.get(address);
-                            BleDeviceInfo deviceInfo = createDeviceInfo(device, rssi, address, deviceName);
+                            String deviceName = PostureMonitorApplication.ADDRESS_NAME_MAP.get(address);
+                            String deviceType = PostureMonitorApplication.ADDRESS_TYPE_MAP.get(address);
+                            String deviceBody = PostureMonitorApplication.ADDRESS_BODY_MAP.get(address);
+                            BleDeviceInfo deviceInfo = createDeviceInfo(device, rssi, address, deviceName, deviceType, deviceBody);
                             addDevice(deviceInfo);
                         }
                         if (mDeviceInfoList.size()== PostureMonitorApplication.NUMBER_OF_SENSORNODE) {
                             CustomToast.middleBottom(mThis, "All devices have been found.");
                             stopScan();
                             for (int i=0; i<mDeviceInfoList.size(); i++) {
-                                if (mDeviceInfoList.get(i).getAddress().equals(PostureMonitorApplication.DEVICE_ADDRESS_LIST[2])) {
+                                if (mDeviceInfoList.get(i).getType().equals("BLE")) {
                                     ScanView.deviceModel[i] = 0;    // 0 for BLE113 Sensornode
                                 } else {
                                     ScanView.deviceModel[i] = 1;    // 1 for CC2650 Sensortag
@@ -194,8 +240,8 @@ public class MainActivity extends ViewPagerActivity {
         return false;
     }
 
-    private BleDeviceInfo createDeviceInfo(BluetoothDevice device, int rssi, String address, String name) {
-        return new BleDeviceInfo(device, rssi, address, name);
+    private BleDeviceInfo createDeviceInfo(BluetoothDevice device, int rssi, String address, String name, String type, String body) {
+        return new BleDeviceInfo(device, rssi, address, name, type, body);
     }
 
     List<BleDeviceInfo> getDeviceInfoList() {
@@ -297,6 +343,11 @@ public class MainActivity extends ViewPagerActivity {
                 return;
             }
         }
+    }
+
+    private void onAbout() {
+        final Dialog dialog = new AboutDialog(this);
+        dialog.show();
     }
 
 }
