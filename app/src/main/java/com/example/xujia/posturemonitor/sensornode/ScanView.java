@@ -1,6 +1,7 @@
 package com.example.xujia.posturemonitor.sensornode;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -9,6 +10,7 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -84,6 +87,7 @@ public class ScanView extends Fragment {
     public static double[] currentGyroY;
     public static double[] currentGyroZ;
     public static double[] currentBaro;
+    public static String currentPosture;
 
     // TCP connection with Java Bigtable server
     public static Socket btSocket;
@@ -163,10 +167,9 @@ public class ScanView extends Fragment {
                 Log.d(TAG, "Timer stopped");
                 streaming = false;
             } else {
-                startTimer();
-                Log.d(TAG, "Timer started");
-                mBtnStream.setText("Stop uploading data");
-                streaming = true;
+                configPosture();
+                // startTimer();
+
             }
         });
 
@@ -548,6 +551,32 @@ public class ScanView extends Fragment {
         }
 
     };
+
+    private void configPosture() {
+        final AlertDialog.Builder alert= new AlertDialog.Builder(mActivity);
+        alert.setMessage("Enter posture:");
+        final EditText posture = new EditText(mActivity);
+        posture.setHint("E.g. walking, sitting");
+        posture.setWidth(280);
+        alert.setView(posture);
+        alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+
+            public void onClick(DialogInterface dialog, int which) {
+                if (posture.getText().toString().length() > 0){
+                    currentPosture = posture.getText().toString();
+                    startTimer();
+                    Log.d(TAG, "Timer started");
+                    mBtnStream.setText("Stop uploading data (" + currentPosture + ")");
+                    streaming = true;
+                }else{
+                    CustomToast.middleBottom(mActivity, "Posture can't be empty.");
+                    return;
+                }
+            }
+        });
+        alert.show();
+
+    }
 
     public void startDeviceActivity(BluetoothDevice device, int position) {
         mDeviceIntent = new Intent(mContext, DeviceActivity.class);
@@ -937,6 +966,7 @@ public class ScanView extends Fragment {
                             sb.append(currentGyroZ[i] + " ");
                             sb.append(currentBaro[i] + " ");
                             sb.append(MainActivity.mDeviceInfoList.get(i).getBody() + " ");
+                            sb.append(currentPosture);
                             currentBaro[i] = -8888;
                             if (btOut != null) {
                                 btOut.println(sb.toString());
