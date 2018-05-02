@@ -28,8 +28,6 @@ public class AddSnDialog extends DialogFragment {
     private PrintWriter mWriter;
     private BufferedReader mReader;
     private String mSnId;
-    private String mMACAddress;
-    private String mType;
     private String mBodyPart;
 
     @SuppressLint("ValidFragment")
@@ -43,7 +41,7 @@ public class AddSnDialog extends DialogFragment {
         
     }
 
-    private static String[] types = {"Select sensornode type", "CC2650 Sensortag", "BLE113 Sensornode"};
+    // private static String[] types = {"Select sensornode type", "CC2650 Sensortag", "BLE113 Sensornode"};
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -52,30 +50,30 @@ public class AddSnDialog extends DialogFragment {
         LayoutInflater inflater = mThis.getLayoutInflater();
         View view = inflater.inflate(R.layout.dialog_add_sn, null);
 
-        ArrayAdapter<String> adapterType = new ArrayAdapter<String>(mThis, android.R.layout.simple_spinner_item, types);
-        adapterType.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        Spinner spinnerType = (Spinner) view.findViewById(R.id.type_spinner);
-        spinnerType.setAdapter(adapterType);
+//        ArrayAdapter<String> adapterType = new ArrayAdapter<String>(mThis, android.R.layout.simple_spinner_item, types);
+//        adapterType.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+//        Spinner spinnerType = (Spinner) view.findViewById(R.id.type_spinner);
+//        spinnerType.setAdapter(adapterType);
 
         ArrayAdapter<String> adapterBody = new ArrayAdapter<String>(mThis, android.R.layout.simple_spinner_item, PostureMonitorApplication.BODY_LIST_USER);
         adapterBody.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         Spinner spinnerBody = (Spinner) view.findViewById(R.id.body_spinner);
         spinnerBody.setAdapter(adapterBody);
 
-       spinnerType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
-                String type = adapterView.getItemAtPosition(pos).toString();
-                if (type.contains("CC")) {
-                    mType = "CC";
-                } else if (type.contains("BLE")) {
-                    mType = "BLE";
-                }
-            }
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-            }
-        });
+//       spinnerType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+//            @Override
+//            public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
+//                String type = adapterView.getItemAtPosition(pos).toString();
+//                if (type.contains("CC")) {
+//                    mType = "CC";
+//                } else if (type.contains("BLE")) {
+//                    mType = "BLE";
+//                }
+//            }
+//            @Override
+//            public void onNothingSelected(AdapterView<?> adapterView) {
+//            }
+//        });
 
         spinnerBody.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -96,7 +94,7 @@ public class AddSnDialog extends DialogFragment {
                     @Override
                     public void onClick(DialogInterface dialog, int id) {
                         mSnId = ((EditText) view.findViewById(R.id.name)).getText().toString();
-                        mMACAddress = ((EditText) view.findViewById(R.id.address)).getText().toString();
+                        // mMACAddress = ((EditText) view.findViewById(R.id.address)).getText().toString();
                         addSensornode();
                     }
                 })
@@ -109,7 +107,7 @@ public class AddSnDialog extends DialogFragment {
     }
 
     private void addSensornode() {
-        String message = "add " + mSnId + " " + mMACAddress + " " + mType + " " + PostureMonitorApplication.USERNAME + " " + mBodyPart;
+        String message = "add " + mSnId + " " + PostureMonitorApplication.USERNAME + " " + mBodyPart;
         Thread worker = new Thread(new Runnable() {
             boolean waiting = true;
             @Override

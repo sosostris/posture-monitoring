@@ -192,6 +192,18 @@ public class ScanView extends Fragment {
         initUploadInfo();
         initMATLABData();
 
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        builder.setMessage("Please make sure all sensor nodes are worn properly and they are all powered on!")
+                .setTitle("Important");
+        AlertDialog reminderDialog = builder.create();
+        reminderDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+        reminderDialog.show();
+
         return view;
     }
 
@@ -841,7 +853,7 @@ public class ScanView extends Fragment {
                             Log.d(TAG, "Connected with Bigtable Java TCP server");
                             timer = new Timer();
                             initTCPTimerTask();
-                            timer.schedule(timerTask, 1000, 500);
+                            timer.schedule(timerTask, 1000, 500);    // supposed to be 50
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
