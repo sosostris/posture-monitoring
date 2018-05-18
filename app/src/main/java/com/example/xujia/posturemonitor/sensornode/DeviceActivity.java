@@ -285,22 +285,22 @@ import java.net.Socket;
             final String action = intent.getAction();
 
             if (MainActivity.ACTION_ACC.equals(action)) {
-                mDeviceView.mAccelData.setText("x: " + ScanView.currentAccelX[mDevicePosition] + "\ny: " +
-                        ScanView.currentAccelY[mDevicePosition] + "\nz: " + ScanView.currentAccelZ[mDevicePosition]);
+                mDeviceView.mAccelData.setText(String.format("x: %12.11f\ny: %12.11f\nz: %12.11f", ScanView.currentAccelX[mDevicePosition],
+                        ScanView.currentAccelY[mDevicePosition], ScanView.currentAccelZ[mDevicePosition]));
                 sendDataToMATLAB(mDevicePosition, "acc");
             } else if (MainActivity.ACTION_MAG.equals(action)) {
-                mDeviceView.mMagData.setText("x:"+ ScanView.currentMagX[mDevicePosition] + "\ny: " +
-                        ScanView.currentMagY[mDevicePosition] + "\nz: " + ScanView.currentMagZ[mDevicePosition] );
+                mDeviceView.mMagData.setText(String.format("x: %.10f\ny: %.10f\nz: %.10f", ScanView.currentMagX[mDevicePosition],
+                        ScanView.currentMagY[mDevicePosition], ScanView.currentMagZ[mDevicePosition]));
                 sendDataToMATLAB(mDevicePosition, "mag");
             } else if (MainActivity.ACTION_GYR.equals(action)) {
-                mDeviceView.mGyroData.setText("x: "+ ScanView.currentGyroX[mDevicePosition] + "\ny: " +
-                        ScanView.currentGyroY[mDevicePosition] + "\nz: " + ScanView.currentGyroZ[mDevicePosition] );
+                mDeviceView.mGyroData.setText(String.format("x: %.10f\ny: %.10f\nz: %.10f", ScanView.currentGyroX[mDevicePosition],
+                        ScanView.currentGyroY[mDevicePosition], ScanView.currentGyroZ[mDevicePosition]));
                 sendDataToMATLAB(mDevicePosition, "gyr");
             } else if (MainActivity.ACTION_BAR.equals(action)) {
                 mDeviceView.mBaroData.setText(Double.toString(ScanView.currentBaro[mDevicePosition]));
                 sendDataToMATLAB(mDevicePosition, "bar");
             } else if (MainActivity.ACTION_BAT.equals(action)) {
-                mDeviceView.mBatteryLevel.setText(ScanView.currentBatteryLevel[mDevicePosition]);
+                mDeviceView.mBatteryLevel.setText(ScanView.currentBatteryLevel[mDevicePosition] + "%");
             }
 
         }

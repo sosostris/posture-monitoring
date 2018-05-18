@@ -14,6 +14,7 @@ import android.widget.Toast;
 import com.example.xujia.posturemonitor.common.BluetoothLeService;
 import com.example.xujia.posturemonitor.util.CustomToast;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class PostureMonitorApplication extends Application {
     private static final String TAG = "Application";
 
     public static int NUMBER_OF_SENSORNODE;
+    // public static int NUMBER_OF_SENSORNODE = 1;
     public static String JAVA_IP = null;    // 192.168.1.33
     public static int JAVA_PORT_STREAM = 8000;
     public static int JAVA_PORT_GENERAL = 8001;
@@ -38,10 +40,20 @@ public class PostureMonitorApplication extends Application {
     public static String[] SN_BODY_LIST = null;
     public static List<String> BODY_LIST_USER = null;
     public static String[] DEVICE_TYPE_LIST = null;
+    // public static String[] DEVICE_ADDRESS_LIST = {"00:07:80:2D:87:D5", "00:07:80:2D:88:7E"};
+    // public static String[] DEVICE_ADDRESS_LIST = {"00:07:80:2D:88:7E"};
+    // public static String[] DEVICE_NAME_LIST = {"SN0004", "SN0005"};
+    // public static String[] DEVICE_NAME_LIST = {"SN0005"};
+    // public static String[] SN_BODY_LIST = {"Back"};
+    // public static List<String> BODY_LIST_USER = new ArrayList<>();
+    // public static String[] DEVICE_TYPE_LIST = {"BLE"};
 
-    public static Map<String, String> ADDRESS_NAME_MAP = null;
-    public static Map<String, String> ADDRESS_TYPE_MAP = null;
-    public static Map<String, String> ADDRESS_BODY_MAP = null;
+     public static Map<String, String> ADDRESS_NAME_MAP = null;
+     public static Map<String, String> ADDRESS_TYPE_MAP = null;
+     public static Map<String, String> ADDRESS_BODY_MAP = null;
+    // public static Map<String, String> ADDRESS_NAME_MAP = new HashMap<>();
+    // public static Map<String, String> ADDRESS_TYPE_MAP = new HashMap<>();
+    // public static Map<String, String> ADDRESS_BODY_MAP = new HashMap<>();
 
     public BluetoothAdapter mBtAdapter = null;
     private BluetoothLeService mBluetoothLeService;
@@ -49,6 +61,18 @@ public class PostureMonitorApplication extends Application {
 
     @Override
     public void onCreate() {
+
+        // BODY_LIST_USER.add("Back");
+        // BODY_LIST_USER.add("LeftShoulder");
+
+        // ADDRESS_NAME_MAP.put("00:07:80:2D:87:D5", "SN0004");
+        // ADDRESS_NAME_MAP.put("00:07:80:2D:88:7E", "SN0005");
+
+        // ADDRESS_TYPE_MAP.put("00:07:80:2D:87:D5", "BLE");
+        // ADDRESS_TYPE_MAP.put("00:07:80:2D:88:7E", "BLE");
+
+        // ADDRESS_BODY_MAP.put("00:07:80:2D:87:D5", "Back");
+        // ADDRESS_BODY_MAP.put("00:07:80:2D:88:7E", "Back");
 
         // Check if Bluetooth is enabled
         mBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
