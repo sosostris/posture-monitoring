@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018-02-20.
+ */
+
 package com.example.xujia.posturemonitor.sensornode;
 
 import android.app.Application;
@@ -20,26 +24,34 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by xujia on 2018-02-20.
+ * Application class for PostureMonitor which contains the global variables for the application.
  */
-
 public class PostureMonitorApplication extends Application {
 
     private static final String TAG = "Application";
 
     public static int NUMBER_OF_SENSORNODE;
-    // public static int NUMBER_OF_SENSORNODE = 1;
     public static String JAVA_IP = null;    // 192.168.1.33
     public static int JAVA_PORT_STREAM = 8000;
     public static int JAVA_PORT_GENERAL = 8001;
     public static String MATLAB_IP = null;    // 192.168.1.150
     public static int MATLAB_PORT = 30000;
     public static String USERNAME = null;
+    public static String USER_ID = null;
     public static String[] DEVICE_ADDRESS_LIST = null;
     public static String[] DEVICE_NAME_LIST = null;
     public static String[] SN_BODY_LIST = null;
     public static List<String> BODY_LIST_USER = null;
     public static String[] DEVICE_TYPE_LIST = null;
+
+    public static Map<String, String> ADDRESS_NAME_MAP = null;
+    public static Map<String, String> ADDRESS_TYPE_MAP = null;
+    public static Map<String, String> ADDRESS_BODY_MAP = null;
+
+    /**
+     * The following commented out lines are for debugging purpose.
+     */
+    // public static int NUMBER_OF_SENSORNODE = 1;
     // public static String[] DEVICE_ADDRESS_LIST = {"00:07:80:2D:87:D5", "00:07:80:2D:88:7E"};
     // public static String[] DEVICE_ADDRESS_LIST = {"00:07:80:2D:88:7E"};
     // public static String[] DEVICE_NAME_LIST = {"SN0004", "SN0005"};
@@ -47,10 +59,6 @@ public class PostureMonitorApplication extends Application {
     // public static String[] SN_BODY_LIST = {"Back"};
     // public static List<String> BODY_LIST_USER = new ArrayList<>();
     // public static String[] DEVICE_TYPE_LIST = {"BLE"};
-
-     public static Map<String, String> ADDRESS_NAME_MAP = null;
-     public static Map<String, String> ADDRESS_TYPE_MAP = null;
-     public static Map<String, String> ADDRESS_BODY_MAP = null;
     // public static Map<String, String> ADDRESS_NAME_MAP = new HashMap<>();
     // public static Map<String, String> ADDRESS_TYPE_MAP = new HashMap<>();
     // public static Map<String, String> ADDRESS_BODY_MAP = new HashMap<>();
@@ -62,6 +70,9 @@ public class PostureMonitorApplication extends Application {
     @Override
     public void onCreate() {
 
+        /**
+         * The following commented out lines are for debugging purpose.
+         */
         // BODY_LIST_USER.add("Back");
         // BODY_LIST_USER.add("LeftShoulder");
 
@@ -74,10 +85,10 @@ public class PostureMonitorApplication extends Application {
         // ADDRESS_BODY_MAP.put("00:07:80:2D:87:D5", "Back");
         // ADDRESS_BODY_MAP.put("00:07:80:2D:88:7E", "Back");
 
-        // Check if Bluetooth is enabled
         mBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         mBtAdapter = mBluetoothManager.getAdapter();
 
+        // Check if Bluetooth is enabled; if not, ask for permission
         if (!mBtAdapter.isEnabled()) {
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             enableIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -90,7 +101,9 @@ public class PostureMonitorApplication extends Application {
 
     }
 
-    // Code to manage Service life cycle.
+    /**
+     * Code to manage Service life cycle.
+     */
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
 
         public void onServiceConnected(ComponentName componentName, IBinder service) {
@@ -108,6 +121,9 @@ public class PostureMonitorApplication extends Application {
         }
     };
 
+    /**
+     * Start BluetoothLeService.
+     */
     private void startBluetoothLeService() {
         boolean serviceStarted;
         Intent bindIntent = new Intent(this, BluetoothLeService.class);
@@ -118,7 +134,10 @@ public class PostureMonitorApplication extends Application {
         }
     }
 
-    public static void generateDeviceList() {
+    /**
+     * Initialize HashMaps for sensor nodes.
+     */
+    public static void generateDeviceMap() {
         ADDRESS_NAME_MAP = new HashMap<>();
         ADDRESS_TYPE_MAP = new HashMap<>();
         ADDRESS_BODY_MAP = new HashMap<>();

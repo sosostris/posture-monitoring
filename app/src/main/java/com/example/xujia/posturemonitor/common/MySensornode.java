@@ -1,5 +1,12 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018.
+ */
+
 package com.example.xujia.posturemonitor.common;
 
+/**
+ * Class that represents the sensor nodes owned by the user.
+ */
 public class MySensornode {
 
     private String mAddress;

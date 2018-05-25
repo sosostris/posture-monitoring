@@ -1,8 +1,8 @@
-package com.example.xujia.posturemonitor.common;
-
 /**
- * Created by xujia on 2018-02-24.
+ * Xujia Zhou. Copyright (c) 2018-02-24.
  */
+
+package com.example.xujia.posturemonitor.common;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -16,6 +16,7 @@ import org.xmlpull.v1.XmlPullParserException;
 import android.content.res.XmlResourceParser;
 
 public class GattInfo {
+
     // Bluetooth SIG identifiers
     public static final UUID CLIENT_CHARACTERISTIC_CONFIG = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     private static final String uuidBtSigBase = "0000****-0000-1000-8000-00805f9b34fb";

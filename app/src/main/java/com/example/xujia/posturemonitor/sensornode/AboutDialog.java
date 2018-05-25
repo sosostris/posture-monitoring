@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018-02-20.
+ */
+
 package com.example.xujia.posturemonitor.sensornode;
 
 import android.app.Dialog;
@@ -16,11 +20,10 @@ import android.widget.TextView;
 import com.example.xujia.posturemonitor.R;
 
 /**
- * Created by xujia on 2018-02-20.
+ * Class that represents the dialog that shows up when user clicks "Abou" in menu.
  */
-
 public class AboutDialog extends Dialog {
-    // Log
+
     // private static final String TAG = "AboutDialog";
 
     private Context mContext;
@@ -66,6 +69,9 @@ public class AboutDialog extends Dialog {
         foot.setText(txt);
     }
 
+    /**
+     * Listener for user pressing OK button.
+     */
     private class OkListener implements android.view.View.OnClickListener {
         @Override
         public void onClick(View v) {

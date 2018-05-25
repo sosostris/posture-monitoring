@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018.
+ */
+
 package com.example.xujia.posturemonitor.sensornode;
 
 import android.app.Dialog;
@@ -24,11 +28,15 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
+/**
+ * Avticity for user authentication and sensor node configuration. It is also the
+ * launch activity of this application.
+ */
 public class ConfigActivity extends ViewPagerActivity {
 
     private static final String TAG = "ConfigActivity";
 
-    // TCP connection with Java Bigtable server
+    // TCP connection with Java TCP server for Bigtable
     private Socket socket;
     private PrintWriter writer;
     private BufferedReader reader;
@@ -45,6 +53,9 @@ public class ConfigActivity extends ViewPagerActivity {
 
     private MySensornode[] mySensornodes;
 
+    /**
+     * Constructor.
+     */
     public ConfigActivity() {
         mThis = this;
         mResourceFragmentPager = R.layout.fragment_pager;
@@ -83,10 +94,15 @@ public class ConfigActivity extends ViewPagerActivity {
     }
 
     public void configServers(View view) {
+        // To make sure previous connection is properly closed.
         closeConnection();
         configServers();
     }
 
+    /**
+     * Dialog for user to enter the IP address of the Java TCP server and MATLAB TCP server.
+     * For this purpose, the Android phone also needs to have access to Internet.
+     */
     private void configServers() {
         final Dialog dialog = new Dialog(this);
         dialog.setContentView(R.layout.dialog_server);
@@ -104,11 +120,21 @@ public class ConfigActivity extends ViewPagerActivity {
         dialog.show();
     }
 
+    /**
+     * Connect to the Java TCP server. This method is called when the "Connect" button is pressed.
+     */
     public void connectToServer(View view) {
+
+        /**
+         * If user access the ConfigActivity from the Menu, the "Connect" button needs to be pressed
+         * to renew connection to the Java TCP server. The toast is to remind users about this.
+         */
         if (!mConfigured && PostureMonitorApplication.USERNAME==null) {
             CustomToast.middleBottom(this, "Please config servers first!");
             return;
         }
+
+        // Connect to Java TCP server.
         Thread worker = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -141,21 +167,34 @@ public class ConfigActivity extends ViewPagerActivity {
         worker.start();
     }
 
+    /**
+     * Handles user login by calling login() in ConfigView.
+     * Called when user presses "Login" button.
+     */
     public void login(View view) {
         mConfigView.login(writer, reader);
     }
 
+    /**
+     * Called when user presses "Get sensornodes" button.
+     * This button is currently set to invisible so the method is never called.
+     */
     public void getSensornodes(View view) {
         getSensornodes();
     }
 
+    /**
+     * Handles downloading information of user's sensor nodes and updates the global variables in
+     * application class, including number of sensors, sensor node Ids, sensor node MAC addresses,
+     * sensor node currently configured wearing positions, sensor node types.
+     */
     public void getSensornodes() {
         Thread worker = new Thread(new Runnable() {
-            boolean waitingForNr = true;
-            boolean waitingForId = true;
-            boolean waitingForAd = true;
-            boolean waitingForBd = true;
-            boolean waitingForTy = true;
+            boolean waitingForNr = true;    // number of sensor nodes
+            boolean waitingForId = true;    // Ids of sensor nodes
+            boolean waitingForAd = true;    // Addresses of sensor nodes
+            boolean waitingForBd = true;    // Wearing positions of sensor nodes
+            boolean waitingForTy = true;    // Types of sensor nodes
             @Override
             public void run() {
                 writer.println("sn" + " " + PostureMonitorApplication.USERNAME);
@@ -170,7 +209,6 @@ public class ConfigActivity extends ViewPagerActivity {
                                         CustomToast.middleBottom(mThis, "You have no sensornodes!");
                                     }
                                 });
-                                return;
                             } else {
                                 String[] parts = response.split(" ");
                                 if (parts[0].equals("nr")) {
@@ -207,12 +245,18 @@ public class ConfigActivity extends ViewPagerActivity {
                         e.printStackTrace();
                     }
                 }
+                // Generate a toast message to tell user about his/her sensor node information
                 String message = "You have " + PostureMonitorApplication.NUMBER_OF_SENSORNODE + " sensornodes.\n";
                 for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
                     message = message + PostureMonitorApplication.DEVICE_NAME_LIST[i] + " is at " + PostureMonitorApplication.SN_BODY_LIST[i] + "\n";
                 }
-                PostureMonitorApplication.generateDeviceList();
+
+                // Update global variables in application class
+                PostureMonitorApplication.generateDeviceMap();
                 mSensornodeAcquired = true;
+
+                // Use UI thread to show the toast message and add sensor node information to
+                // private member mySensornodes
                 final String toastMessage = message;
                 mThis.runOnUiThread(new Runnable() {
                     @Override
@@ -229,10 +273,16 @@ public class ConfigActivity extends ViewPagerActivity {
         worker.start();
     }
 
+    /**
+     * Method that returns all user owned sensor nodes.
+     */
     public MySensornode[] getMySensornodes() {
         return mySensornodes;
     }
 
+    /**
+     * Add sensor nodes information to private member mySensornodes.
+     */
     public void initMySensornodes() {
         mySensornodes = new MySensornode[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
@@ -245,6 +295,9 @@ public class ConfigActivity extends ViewPagerActivity {
         }
     }
 
+    /**
+     * Go to the fragment that configures the wearing positions of sensor nodes.
+     */
     public void gotoSnConfigFrag(View view) {
         if (writer == null || reader == null) {
             CustomToast.middleBottom(mThis, "Please connect to server first!");
@@ -257,12 +310,18 @@ public class ConfigActivity extends ViewPagerActivity {
         loadFragment(1);
     }
 
+    /**
+     * Go to MainActivity to start using the sensor nodes.
+     */
     public void gotoMain(View view) {
         BluetoothLeService.myBluetoothGattCallbacks = new BluetoothLeService.MyBluetoothGattCallback[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         mMainIntent = new Intent(this, MainActivity.class);
         startActivityForResult(mMainIntent, -1);
     }
 
+    /**
+     * Close connection to the Java TCP server that handles configuration.
+     */
     private void closeConnection() {
         if (writer != null) {
             writer.println("ex");
@@ -287,6 +346,9 @@ public class ConfigActivity extends ViewPagerActivity {
         }
     }
 
+    /**
+     * Check method to see if the wearing positions are empty or properly configured.
+     */
     public boolean allConfigured() {
         for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
             if (PostureMonitorApplication.SN_BODY_LIST[i] == null) {
@@ -296,6 +358,12 @@ public class ConfigActivity extends ViewPagerActivity {
         return true;
     }
 
+    /**
+     * Contact Java TCP server to update the sensor node wearing positions in Bigtable
+     * and update global variables in application class.
+     * Called when "OK" button in sensor node configuration fragment is clicked.
+     *
+     */
     public void uploadSnConfig(View view) {
         Thread worker = new Thread(new Runnable() {
             boolean waiting = true;
@@ -313,7 +381,9 @@ public class ConfigActivity extends ViewPagerActivity {
                         String response = reader.readLine();
                         if (response != null) {
                             if (response.equals("OK")) {
+                                // Update global variables
                                 updateSnBodyList();
+                                // Update private member mySensornodes
                                 updateMySnBodyList();
                                 mThis.runOnUiThread(new Runnable() {
                                     @Override
@@ -347,6 +417,10 @@ public class ConfigActivity extends ViewPagerActivity {
         worker.start();
     }
 
+    /**
+     * Show the dialog that handles add sensor node.
+     * Called when "Add sensornode" button is pressed.
+     */
     public void addSensornode(View view) {
         if (writer == null || reader == null) {
             CustomToast.middleBottom(mThis, "Please connect to server first!");
@@ -356,6 +430,10 @@ public class ConfigActivity extends ViewPagerActivity {
         snDialog.show(getFragmentManager(), TAG);
     }
 
+    /**
+     * Show the dialog that handles delete sensor node.
+     * Called when the "Delete sensornode" button is pressed.
+     */
     public void delSensornode(View view) {
         if (writer == null || reader == null) {
             CustomToast.middleBottom(mThis, "Please connect to server first!");
@@ -365,11 +443,19 @@ public class ConfigActivity extends ViewPagerActivity {
         delSnDialog.show(getFragmentManager(), TAG);
     }
 
+    /**
+     * Show the dialog that handles listing all wearing positions.
+     * Called when button "View wearing positions" is pressed.
+     */
     public void viewBody(View view) {
         BodyDialog bodyDialog = new BodyDialog();
         bodyDialog.show(getFragmentManager(), TAG);
     }
 
+    /**
+     * Show the dialog that handles adding new wearing position.
+     * Called when "Add wearing position" button is pressed.
+     */
     public void addBody(View view) {
         if (writer == null || reader == null) {
             CustomToast.middleBottom(mThis, "Please connect to server first!");
@@ -379,6 +465,10 @@ public class ConfigActivity extends ViewPagerActivity {
         addBodyDialog.show(getFragmentManager(), TAG);
     }
 
+    /**
+     * Update the global variables for configured wearing positions of sensor nodes
+     * in the application class.
+     */
     private void updateSnBodyList() {
         String[] newBodyParts = mConfigSnView.getNewBodyParts();
         PostureMonitorApplication.ADDRESS_BODY_MAP.clear();
@@ -389,6 +479,9 @@ public class ConfigActivity extends ViewPagerActivity {
         }
     }
 
+    /**
+     * Update the configured wearing positions in private member mySensornodes.
+     */
     private void updateMySnBodyList() {
         for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
             mySensornodes[i].setBody(PostureMonitorApplication.SN_BODY_LIST[i]);

@@ -1,8 +1,8 @@
-package com.example.xujia.posturemonitor.sensornode;
-
 /**
- * Created by xujia on 2018-02-25.
+ * Xujia Zhou. Copyright (c) 2018-02-25.
  */
+
+package com.example.xujia.posturemonitor.sensornode;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -22,12 +22,15 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 
-// Fragment for Config View
+/**
+ * Fragment class for ConfigActivity where user can configure communication servers,
+ * get authenticate, add and delete sensor nodes, view and add wearing positison.
+ */
 public class ConfigView extends Fragment {
 
     public static ConfigView mInstance;
 
-    // GUI
+    // GUI components
     private View view;
     private TextView mLoginText;
     private Button mConfigBtn;
@@ -97,22 +100,35 @@ public class ConfigView extends Fragment {
         super.onPause();
     }
 
+    /**
+     * Change the visibility of the Login-related UI components from "gone" to "visible".
+     */
     public void showLogin() {
         mLoginBtn.setVisibility(View.VISIBLE);
         mUsername.setVisibility(View.VISIBLE);
         mPassword.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * Change the visibility of the Login-related UI components from "visible" to "gone".
+     */
     public void hideLogin() {
         mLoginBtn.setVisibility(View.GONE);
         mUsername.setVisibility(View.GONE);
         mPassword.setVisibility(View.GONE);
     }
 
+    /**
+     * Hide the "Get sensornodes" button.
+     */
     public void hideGetSensornodeBtn() {
         mGetnodesBtn.setVisibility(View.GONE);
     }
 
+    /**
+     * Make a button visible.
+     * @param btn the button to be shown visible.
+     */
     public void showBtn(String btn) {
         if (btn.equals("main")) {
             mGotoMainBtn.setVisibility(View.VISIBLE);
@@ -129,6 +145,9 @@ public class ConfigView extends Fragment {
         }
     }
 
+    /**
+     * Handles user login by communicating with the Java TCP server with the right protocol commands.
+     */
     public void login(PrintWriter writer, BufferedReader reader) {
         final String username = mUsername.getText().toString();
         final String password = mPassword.getText().toString();
@@ -136,14 +155,17 @@ public class ConfigView extends Fragment {
         Thread worker = new Thread(new Runnable() {
             boolean waitingOK = true;
             boolean waitingBdAll = true;
+            String userId;
             @Override
             public void run() {
                 while (waitingOK || waitingBdAll) {
                     try {
                         String response = reader.readLine();
                         if (response != null) {
-                            if (response.equals("OK")) {
+                            if (response.contains("OK")) {
+                                String[] parts = response.toString().split(" ");
                                 mActivity.mAuthenticated = true;
+                                userId = parts[1];
                                 waitingOK = false;
                             } else if (response.equals("BAD")){
                                 mActivity.runOnUiThread(new Runnable() {
@@ -165,6 +187,7 @@ public class ConfigView extends Fragment {
                                         public void run() {
                                             hideLogin();
                                             PostureMonitorApplication.USERNAME = username;
+                                            PostureMonitorApplication.USER_ID = userId;
                                             mLoginText.setText("You are logged in as " + username + " :)");
                                             CustomToast.middleBottom(mActivity, "Login successful!");
                                         }
@@ -183,6 +206,9 @@ public class ConfigView extends Fragment {
         worker.start();
     }
 
+    /**
+     * The same method as getSensornodes() ConfigActivity.
+     */
     private void getSensornodes(BufferedReader reader) {
         boolean waitingForNr = true;
         boolean waitingForId = true;
@@ -200,7 +226,6 @@ public class ConfigView extends Fragment {
                                 CustomToast.middleBottom(mActivity, "You have no sensornodes!");
                             }
                         });
-                        return;
                     } else {
                         String[] parts = response.split(" ");
                         if (parts[0].equals("nr")) {
@@ -237,13 +262,19 @@ public class ConfigView extends Fragment {
                 e.printStackTrace();
             }
         }
+
+        // Generate a toast message to tell user about his/her sensor node information
         String message = "You have " + PostureMonitorApplication.NUMBER_OF_SENSORNODE + " sensornodes.\n";
         for (int i = 0; i < PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
             message = message + PostureMonitorApplication.DEVICE_NAME_LIST[i] + " is at " + PostureMonitorApplication.SN_BODY_LIST[i] + "\n";
         }
-        PostureMonitorApplication.generateDeviceList();
+
+        // Update global variables in application class and mySensornodes in ConfigActivity
+        PostureMonitorApplication.generateDeviceMap();
         mActivity.initMySensornodes();
         mActivity.mSensornodeAcquired = true;
+
+        // Use UI thread to show the toast message and make the other configuration-related buttons visible
         final String toastMessage = message;
         mActivity.runOnUiThread(new Runnable() {
             @Override

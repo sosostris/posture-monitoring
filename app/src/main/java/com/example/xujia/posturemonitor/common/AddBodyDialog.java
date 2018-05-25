@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018.
+ */
+
 package com.example.xujia.posturemonitor.common;
 
 import android.annotation.SuppressLint;
@@ -22,6 +26,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+/**
+ * Represents the dialog in ConfigActivity that adds a new wearing position.
+ */
 public class AddBodyDialog extends DialogFragment{
 
     private ConfigActivity mThis;
@@ -67,8 +74,11 @@ public class AddBodyDialog extends DialogFragment{
         return builder.create();
     }
 
+    /**
+     * Add a new wearing position.
+     */
     private void addNewBody() {
-        String message = "nbd " + mBody;
+        String message = "nbd " + PostureMonitorApplication.USERNAME + " " + mBody;
         Thread worker = new Thread(new Runnable() {
             boolean waiting = true;
             @Override
@@ -108,6 +118,9 @@ public class AddBodyDialog extends DialogFragment{
         worker.start();
     }
 
+    /**
+     * Update the global variable.
+     */
     private void updateUserBodyList() {
         PostureMonitorApplication.BODY_LIST_USER.add(mBody);
     }

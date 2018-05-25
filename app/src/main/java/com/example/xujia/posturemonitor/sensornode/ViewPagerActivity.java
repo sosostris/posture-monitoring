@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018-02-20.
+ */
+
 package com.example.xujia.posturemonitor.sensornode;
 
 import com.example.xujia.posturemonitor.R;
@@ -22,14 +26,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by xujia on 2018-02-20.
+ * VierPaperActivity that contains meta functionality like action bar, menu information, etc.
+ * for the other activities in the application to inherit from.
  */
-
 public class ViewPagerActivity extends FragmentActivity {
 
     private static final String TAG = "ViewPagerActivity";
 
-    // GUI
+    // GUI components
     protected static ViewPagerActivity mThis = null;
     protected SectionsPagerAdapter mSectionsPagerAdapter;
     protected ViewPager mViewPager;
@@ -85,6 +89,9 @@ public class ViewPagerActivity extends FragmentActivity {
             super.onBackPressed();
     }
 
+    /**
+     * Render the menu.
+     */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         this.optionsMenu = menu;
@@ -94,6 +101,9 @@ public class ViewPagerActivity extends FragmentActivity {
         return super.onCreateOptionsMenu(menu);
     }
 
+    /**
+     * Handles menu item selection.
+     */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle presses on the action bar items
@@ -103,6 +113,9 @@ public class ViewPagerActivity extends FragmentActivity {
                 return true;
             case R.id.opt_about:
                 onAbout();
+                break;
+            case R.id.opt_config_sys:
+                finish();
                 break;
             case R.id.opt_exit:
                 Toast.makeText(this, "Exit...", Toast.LENGTH_SHORT).show();
@@ -114,11 +127,18 @@ public class ViewPagerActivity extends FragmentActivity {
         return true;
     }
 
+    /**
+     * Show About dialog.
+     */
     private void onAbout() {
         final Dialog dialog = new AboutDialog(this);
         dialog.show();
     }
 
+    /**
+     * Start or stop busy indication in action bar.
+     * Used for showing if the application is scanning BLE devices or not.
+     */
     protected void showBusyIndicator(final boolean idle) {
         if (optionsMenu != null) {
             refreshItem = optionsMenu.findItem(R.id.opt_progress);
@@ -137,7 +157,9 @@ public class ViewPagerActivity extends FragmentActivity {
         }
     }
 
-    // Create a tab listener that is called when the user changes tabs
+    /**
+     * Create a tab listener that is called when the user changes tabs.
+     */
     ActionBar.TabListener tabListener = new ActionBar.TabListener() {
         public void onTabSelected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
             int n = tab.getPosition();
@@ -157,6 +179,9 @@ public class ViewPagerActivity extends FragmentActivity {
         }
     };
 
+    /**
+     * Inner class pager adapter used for showing different fragments.
+     */
     public class SectionsPagerAdapter extends FragmentStatePagerAdapter {
         private List<Fragment> mFragmentList;
         private List<String> mTitles;
@@ -196,11 +221,17 @@ public class ViewPagerActivity extends FragmentActivity {
         }
     }
 
+    /**
+     * Go to ConfigActivity.
+     */
     private void configSystem() {
         mConfigIntent = new Intent(this, ConfigActivity.class);
         startActivity(mConfigIntent);
     }
 
+    /**
+     * Load a fragment.
+     */
     public void loadFragment(int n) {
         mViewPager.setCurrentItem(n);
     }

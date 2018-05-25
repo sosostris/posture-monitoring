@@ -1,8 +1,8 @@
-package com.example.xujia.posturemonitor.sensornode;
-
 /**
- * Created by xujia on 2018-02-25.
+ * Xujia Zhou. Copyright (c) 2018-02-25.
  */
+
+package com.example.xujia.posturemonitor.sensornode;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -15,7 +15,9 @@ import android.widget.TextView;
 
 import com.example.xujia.posturemonitor.R;
 
-// Fragment for Device View
+/**
+ * Fragment class for DeviceActivity.
+ */
 public class DeviceView extends Fragment {
 
     public static DeviceView mInstance;
@@ -78,6 +80,9 @@ public class DeviceView extends Fragment {
         super.onPause();
     }
 
+    /**
+     * Update the text on the "Start/Stop streaming" button.
+     */
     public void setMatlabButtonText(String text) {
         mToggleMATLABBtn.setText(text);
     }

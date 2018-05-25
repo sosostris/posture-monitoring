@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018.
+ */
+
 package com.example.xujia.posturemonitor.common;
 
 import android.annotation.SuppressLint;
@@ -15,6 +19,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+/**
+ * Class that represents the dialog where the user can delete a sensor node.
+ */
 public class DelSnDialog extends DialogFragment {
 
     private ConfigActivity mThis;
@@ -54,6 +61,9 @@ public class DelSnDialog extends DialogFragment {
         return builder.create();
     }
 
+    /**
+     * Updates the global sensor node list in application class.
+     */
     private void updateSnList() {
         String snToDel = PostureMonitorApplication.DEVICE_NAME_LIST[mSelectedItem];
         String message = "del " + snToDel;

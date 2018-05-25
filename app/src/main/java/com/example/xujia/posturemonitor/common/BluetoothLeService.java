@@ -1,8 +1,10 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018.
+ */
+
 package com.example.xujia.posturemonitor.common;
 
-import java.io.PipedOutputStream;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -22,18 +24,17 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
-import com.example.xujia.posturemonitor.sensornode.PostureMonitorApplication;
-
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 // import android.util.Log;
 
 /**
- * Service for managing connection and data communication with a GATT server
+ * Service class for managing connection and data communication with a GATT server
  * hosted on a given Bluetooth LE device.
  */
 public class BluetoothLeService extends Service {
+
     static final String TAG = "BluetoothLeService";
 
     public final static String ACTION_GATT_CONNECTED = "com.example.xujia.posturemonitor.common.ACTION_GATT_CONNECTED";
@@ -48,7 +49,6 @@ public class BluetoothLeService extends Service {
     public final static String EXTRA_ADDRESS = "com.example.xujia.posturemonitor.common.EXTRA_ADDRESS";
     public final static int GATT_TIMEOUT = 200;
 
-    // BLE
     private BluetoothManager mBluetoothManager = null;
     private BluetoothAdapter mBtAdapter = null;
     private BluetoothGatt[] mBluetoothGatts = null;
@@ -94,9 +94,7 @@ public class BluetoothLeService extends Service {
     private volatile LinkedList<bleRequest> procQueue;
     private volatile LinkedList<bleRequest> nonBlockQueue;
 
-    /**
-     * GATT client callbacks
-     */
+    // GATT client callbacks
     public static MyBluetoothGattCallback[] myBluetoothGattCallbacks;
 //    private BluetoothGattCallback mGattCallbacks0 = new BluetoothGattCallback() {
 //
@@ -213,8 +211,12 @@ public class BluetoothLeService extends Service {
         sendBroadcast(intent);
     }
 
-    // The address is to show the source of the data
-    private void broadcastUpdate(final String action, final String address, final BluetoothGattCharacteristic characteristic, final int status) {
+    /**
+     * This broadcastUpdate method is called the most because it has BLE device address has
+     * parameter, which lets the application know the source of received data.
+     */
+    private void broadcastUpdate(final String action, final String address,
+                                 final BluetoothGattCharacteristic characteristic, final int status) {
         final Intent intent = new Intent(action);
         intent.putExtra(EXTRA_UUID, characteristic.getUuid().toString());
         intent.putExtra(EXTRA_ADDRESS, address);
@@ -264,7 +266,8 @@ public class BluetoothLeService extends Service {
 
     /**
      * Initializes a reference to the local Bluetooth adapter.
-     *
+     * Initializes 24 BluetoothGatt objects for 24 sensor nodes to handle Gatt profiles.
+     * If quantity of sensor nodes is larger than 24, change this value.
      * @return Return true if the initialization is successful.
      */
     public boolean initialize() {
@@ -364,6 +367,14 @@ public class BluetoothLeService extends Service {
         return -2;
     }
 
+    /**
+     * Method to write a byte (b) to the designated characteristic.
+     * In this app this method is mostly called to enable Notify.
+     * @param characteristic
+     * @param b the data to be written to the characteristic
+     * @param position the position of the BLE device in list view
+     * @return
+     */
     public int writeCharacteristic(BluetoothGattCharacteristic characteristic, byte b, int position) {
         byte[] val = new byte[1];
         val[0] = b;
@@ -389,6 +400,7 @@ public class BluetoothLeService extends Service {
         }
         return -2;
     }
+
     public int writeCharacteristic(BluetoothGattCharacteristic characteristic, byte[] b, int position) {
         characteristic.setValue(b);
         bleRequest req = new bleRequest();
@@ -411,6 +423,7 @@ public class BluetoothLeService extends Service {
         }
         return -2;
     }
+
     public int writeCharacteristic(BluetoothGattCharacteristic characteristic) {
         bleRequest req = new bleRequest();
         req.status = bleRequestStatus.not_queued;
@@ -531,14 +544,14 @@ public class BluetoothLeService extends Service {
 
         if (connectionState == BluetoothProfile.STATE_DISCONNECTED) {
 
-            // Previously connected device. Try to reconnect.
-//            if (mBluetoothGatts[position] != null) {
-//                if (mBluetoothGatts[position].connect()) {
-//                    return true;
-//                } else {
-//                    return false;
-//                }
-//            }
+            // If it is a previously connected device, try to reconnect.
+            if (mBluetoothGatts[position] != null) {
+                if (mBluetoothGatts[position].connect()) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
 
             if (device == null) {
                 // Log.w(TAG, "Device not found.  Unable to connect.");
@@ -550,12 +563,6 @@ public class BluetoothLeService extends Service {
 
             myBluetoothGattCallbacks[position] = new MyBluetoothGattCallback();
             mBluetoothGatts[position] = device.connectGatt(this, false, myBluetoothGattCallbacks[position]);
-
-//            if (position==0) {
-//                mBluetoothGatts[position] = device.connectGatt(this, false, mGattCallbacks0);
-//            } else {
-//                mBluetoothGatts[position] = device.connectGatt(this, false, mGattCallbacks1);
-//            }
 
         } else {
             // Log.w(TAG, "Attempt to connect in state: " + connectionState);
@@ -606,9 +613,9 @@ public class BluetoothLeService extends Service {
         return devList.size();
     }
 
-    //
-    // Utility functions
-    //
+    /**
+     * Utility functions.
+     */
     public static BluetoothGatt getBtGatt(int position) {
         return mThis.mBluetoothGatts[position];
     }
@@ -859,6 +866,9 @@ public class BluetoothLeService extends Service {
         return -3; // Set notification to android was wrong ...
     }
 
+    /**
+     * Inner class that defines the BluetoothGattCallback.
+     */
     public class MyBluetoothGattCallback extends BluetoothGattCallback {
 
         @Override

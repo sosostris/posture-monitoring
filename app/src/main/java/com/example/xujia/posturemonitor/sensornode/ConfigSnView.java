@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018.
+ */
+
 package com.example.xujia.posturemonitor.sensornode;
 
 import android.annotation.SuppressLint;
@@ -21,6 +25,9 @@ import com.example.xujia.posturemonitor.common.MySensornode;
 
 import java.util.ArrayList;
 
+/**
+ * Fragment class for configuring wearing positions of user-owned sensor nodes.
+ */
 public class ConfigSnView extends Fragment {
 
     private static String TAG = "ConfigSnView";
@@ -80,7 +87,12 @@ public class ConfigSnView extends Fragment {
         mSnListAdapter.notifyDataSetChanged();
     }
 
-    // Adapter to render device list
+    /**
+     * Inner class adapter to render sensor node list.
+     * Each item shows on the left side sensor node information including Id, address and
+     * currently configured wearing position. On the right side is a drop down menu where user
+     * could pick a new wearing position for the sensor node.
+     */
     @SuppressLint("InflateParams")
     class SnListAdapter extends BaseAdapter {
 
@@ -162,14 +174,24 @@ public class ConfigSnView extends Fragment {
 
     }
 
+    /**
+     * Make the button for going to MainActivity visile to user.
+     */
     public void showMainBtn() {
         mGotoMainBtn.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * Hide the "OK" button.
+     */
     public void hideOKBtn() {
         mBtnOK.setVisibility(View.GONE);
     }
 
+    /**
+     * Return the newly picked up wearing positions by the user for each sensor node as a
+     * String array.
+     */
     public String[] getNewBodyParts() {
         return mSnListAdapter.newBodyParts;
     }

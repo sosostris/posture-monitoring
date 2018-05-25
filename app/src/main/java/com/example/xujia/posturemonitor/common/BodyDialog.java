@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018.
+ */
+
 package com.example.xujia.posturemonitor.common;
 
 import android.app.AlertDialog;
@@ -8,6 +12,9 @@ import android.os.Bundle;
 
 import com.example.xujia.posturemonitor.sensornode.PostureMonitorApplication;
 
+/**
+ * Class that represents the dialog in which user can view his/her current available wearing positions.
+ */
 public class BodyDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {

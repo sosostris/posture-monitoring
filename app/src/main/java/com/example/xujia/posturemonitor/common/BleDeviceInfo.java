@@ -1,13 +1,16 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018-02-20.
+ */
+
 package com.example.xujia.posturemonitor.common;
 
 import android.bluetooth.BluetoothDevice;
 
 /**
- * Created by xujia on 2018-02-20.
+ * Class that represents an identified sensor node (either CC2650 sensortag or BLE113 sensor node)
  */
-
 public class BleDeviceInfo {
-    // Data
+
     private BluetoothDevice mBtDevice;
     private int mRssi;
     private String mAddress;

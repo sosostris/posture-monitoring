@@ -1,8 +1,8 @@
-package com.example.xujia.posturemonitor.sensornode;
-
 /**
- * Created by xujia on 2018-02-25.
+ * Xujia Zhou. Copyright (c) 2018-02-25.
  */
+
+package com.example.xujia.posturemonitor.sensornode;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
@@ -32,6 +32,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
 
+/**
+ * Activity that shows the data of a particular sensor node and streams data to MATLAB.
+ */
 @SuppressLint("InflateParams") public class DeviceActivity extends ViewPagerActivity implements SensorEventListener {
 
     // Log
@@ -63,9 +66,6 @@ import java.net.Socket;
     private boolean mIsStreaming;
     private String currentStreamingSensorType = null;
 
-    // Temp
-    private String batteryString = "";
-
     public DeviceActivity() {
         mResourceFragmentPager = R.layout.fragment_pager;
         mResourceIdPager = R.id.pager;
@@ -73,23 +73,6 @@ import java.net.Socket;
 
     public static DeviceActivity getInstance() {
         return (DeviceActivity) mThis;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle presses on the action bar items
-        switch (item.getItemId()) {
-            case android.R.id.home:
-                onBackPressed();
-                return true;
-            case R.id.opt_exit:
-                Toast.makeText(this, "Exit...", Toast.LENGTH_SHORT).show();
-                finish();
-                break;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-        return true;
     }
 
     @Override
@@ -101,9 +84,11 @@ import java.net.Socket;
         // registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
         // registerReceiver(mDataUpdateReceiver, makeDataUpdateIntentFilter());
 
-        // BLE
         // mBtLeService = BluetoothLeService.getInstance();
+
+        // Get from intent the BLE device the DeviceActivity should show data of
         mDevice = intent.getParcelableExtra(EXTRA_DEVICE);
+        // Get the BLE device's position in the list view in ScanView
         mDevicePosition = intent.getIntExtra(EXTRA_DEVICE_POSITION, -1);
 
         // GUI
@@ -122,6 +107,7 @@ import java.net.Socket;
     @Override
     public void onDestroy() {
         super.onDestroy();
+
         // Close MATLAB connection
         try {
             if (dos != null) {
@@ -143,6 +129,7 @@ import java.net.Socket;
 //            unregisterReceiver(mGattUpdateReceiver);
 //            mIsReceiving = false;
 //        }
+
         // unregisterReceiver(mDataUpdateReceiver);
 
         // View should be started again from scratch
@@ -193,6 +180,9 @@ import java.net.Socket;
 //        return filter;
 //    }
 
+    /**
+     * Generate the intent filter for DeviceActivity to register
+     */
     private static IntentFilter makeDataUpdateIntentFilter() {
         final IntentFilter filter = new IntentFilter();
         filter.addAction(MainActivity.ACTION_ACC);
@@ -203,6 +193,10 @@ import java.net.Socket;
         return filter;
     }
 
+    /**
+     * Called when view is ready.
+     * Set view title, get sensor node Id (e.g. SN0004), register the broadcast receiver.
+     */
     void onViewInflated(View view) {
         Log.d(TAG, "Gatt view ready");
         // Set title bar to device name
@@ -278,6 +272,11 @@ import java.net.Socket;
 //        }
 //    };
 
+    /**
+     * Initialize the BroadcastReceiver that gets updated data from MainActivity.
+     * When new sensor data is received, the UI components that show the sensor data are updated and
+     * MATLAB gets updated sensor data as well.
+     */
     private final BroadcastReceiver mDataUpdateReceiver = new BroadcastReceiver() {
 
         @Override
@@ -285,15 +284,18 @@ import java.net.Socket;
             final String action = intent.getAction();
 
             if (MainActivity.ACTION_ACC.equals(action)) {
-                mDeviceView.mAccelData.setText(String.format("x: %12.11f\ny: %12.11f\nz: %12.11f", ScanView.currentAccelX[mDevicePosition],
+                mDeviceView.mAccelData.setText(String.format("x: %12.11f\ny: %12.11f\nz: %12.11f",
+                        ScanView.currentAccelX[mDevicePosition],
                         ScanView.currentAccelY[mDevicePosition], ScanView.currentAccelZ[mDevicePosition]));
                 sendDataToMATLAB(mDevicePosition, "acc");
             } else if (MainActivity.ACTION_MAG.equals(action)) {
-                mDeviceView.mMagData.setText(String.format("x: %.10f\ny: %.10f\nz: %.10f", ScanView.currentMagX[mDevicePosition],
+                mDeviceView.mMagData.setText(String.format("x: %.10f\ny: %.10f\nz: %.10f",
+                        ScanView.currentMagX[mDevicePosition],
                         ScanView.currentMagY[mDevicePosition], ScanView.currentMagZ[mDevicePosition]));
                 sendDataToMATLAB(mDevicePosition, "mag");
             } else if (MainActivity.ACTION_GYR.equals(action)) {
-                mDeviceView.mGyroData.setText(String.format("x: %.10f\ny: %.10f\nz: %.10f", ScanView.currentGyroX[mDevicePosition],
+                mDeviceView.mGyroData.setText(String.format("x: %.10f\ny: %.10f\nz: %.10f",
+                        ScanView.currentGyroX[mDevicePosition],
                         ScanView.currentGyroY[mDevicePosition], ScanView.currentGyroZ[mDevicePosition]));
                 sendDataToMATLAB(mDevicePosition, "gyr");
             } else if (MainActivity.ACTION_BAR.equals(action)) {
@@ -306,10 +308,12 @@ import java.net.Socket;
         }
     };
 
-    /*
-     The firs byte is to identify sensortag or sensornode, 0 = BLE113 Sensornode, 1 = CC2650 Sensortag
-     The second byte is used to identify sensor type
-     0 = Accelerometer, 1 = Magnetometer, 2 = Gyroscope, 3 = Barometer
+    /**
+     * Sends the sensor data in raw bytes to MATLAB server.
+     * The firs byte is to identify CC2650 sensortag or BLE113 sensornode,
+     * 0 = BLE113 Sensornode, 1 = CC2650 Sensortag
+     * The second byte is used to identify sensor type
+     * 0 = Accelerometer, 1 = Magnetometer, 2 = Gyroscope, 3 = Barometer
     */
     private void sendDataToMATLAB(int position, String sensorType) {
         if (!sensorType.equals(currentStreamingSensorType)) {
@@ -362,7 +366,9 @@ import java.net.Socket;
     }
 
 
-    // Activity result handling
+    /**
+     * Activity result handling
+     */
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
@@ -372,17 +378,25 @@ import java.net.Socket;
         }
     }
 
-    // Handles phone sensors
+    /**
+     * Not implemented. This method can be used for calibration in future work.
+     */
     @Override
     public void onSensorChanged(SensorEvent event) {
 
     }
 
+    /**
+     * Not implemented. This method can be used for calibration in future work.
+     */
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
 
+    /**
+     * Convert 4 bytes to an int.
+     */
     private int byteToInt(byte[] bytes) {
         int result = 0;
         for (int i=0; i<4; i++) {
@@ -391,6 +405,11 @@ import java.net.Socket;
         return result;
     }
 
+    /**
+     * Method to show raw bytes from sensor node.
+     * returns a String that shows the raw data as bytes from sensor node.
+     * Not in use anymore.
+     */
     private String buildString(byte[] bytes) {
         StringBuilder builder = new StringBuilder();
         for (int i=0; i<bytes.length; i++) {
@@ -400,6 +419,9 @@ import java.net.Socket;
         return builder.toString();
     }
 
+    /**
+     * Interpret the barometer data from sensor node.
+     */
     private byte[] getCorrectBaroData(byte[] bytes) {
         // The data in BLE113 is stored in little endian order so we need to reverse order
         byte[] reversedBytes = new byte[4];
@@ -410,6 +432,9 @@ import java.net.Socket;
         return reversedBytes;
     }
 
+    /**
+     * Reverse a byte array.
+     */
     private byte[] getReversedBytes(byte[] bytes, int length) {
         byte[] reversedBytes = new byte[length];
         for (int i=0; i<length; i++) {
@@ -418,10 +443,11 @@ import java.net.Socket;
         return reversedBytes;
     }
 
+    /**
+     * Update the private member currentStreamingSensorType when a sensor type is chosen.
+     * Called when a radio button is clicked.
+     */
     public void onMatlabRadioButtonClicked(View view) {
-        // Is the button now checked?
-        boolean checked = ((RadioButton) view).isChecked();
-
         // Check which radio button was clicked
         switch(view.getId()) {
             case R.id.accel_matlab:
@@ -439,6 +465,10 @@ import java.net.Socket;
         }
     }
 
+    /**
+     * Toggles MATLAB streaming. If it is streaming, stop streaming; if it is not streaming, start streaming.
+     * Called when the "Start/Stop streaming" button is clicked.
+     */
     public void toggleMatlabStreaming(View view) {
         mIsStreaming = !mIsStreaming;
         if (mIsStreaming) {
@@ -447,6 +477,7 @@ import java.net.Socket;
                 @Override
                 public void run() {
                     try {
+                        // Initialize connection between the application and the MATLAB server
                         socket = new Socket(PostureMonitorApplication.MATLAB_IP, PostureMonitorApplication.MATLAB_PORT);
                         if (socket != null) {
                             try {
@@ -465,6 +496,7 @@ import java.net.Socket;
             matlabWorker.start();
         } else {
             mDeviceView.setMatlabButtonText("Start streaming");
+            // Close connection socket
             try {
                 if (dos != null) {
                     dos.close();

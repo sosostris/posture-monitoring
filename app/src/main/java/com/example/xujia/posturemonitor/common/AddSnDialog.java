@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018.
+ */
+
 package com.example.xujia.posturemonitor.common;
 
 import android.annotation.SuppressLint;
@@ -22,6 +26,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+/**
+ * Represents the dialog in ConfigActivity that adds a new sensor node.
+ */
 public class AddSnDialog extends DialogFragment {
 
     private ConfigActivity mThis;
@@ -106,6 +113,9 @@ public class AddSnDialog extends DialogFragment {
         return builder.create();
     }
 
+    /**
+     * Add a new sensor node.
+     */
     private void addSensornode() {
         String message = "add " + mSnId + " " + PostureMonitorApplication.USERNAME + " " + mBodyPart;
         Thread worker = new Thread(new Runnable() {

@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018-03-05.
+ */
+
 package com.example.xujia.posturemonitor.sensornode;
 
 import android.content.Context;
@@ -18,7 +22,7 @@ import com.example.xujia.posturemonitor.R;
 import java.util.Arrays;
 
 /**
- * Created by xujia on 2018-03-05.
+ * Fragment class that shows the Android phone's accelerometer, magnetometer, gyroscope and barometer data.
  */
 public class GalaxySensorView extends Fragment implements SensorEventListener {
 
@@ -39,7 +43,7 @@ public class GalaxySensorView extends Fragment implements SensorEventListener {
     private float mAcceleration[] = new float[3];    // All values are in SI units (m/s^2)
     private float mGyrorate[] = new float[3];    // All values are in radians/second and measure the rate of rotation around the device's local X, Y and Z axis.
 
-    // UI
+    // UI components
     private TextView mBarometerValue, mMagnetometerValue, mAccelValue, mGyroValue;
 
     @Override
@@ -85,6 +89,10 @@ public class GalaxySensorView extends Fragment implements SensorEventListener {
         mSensorManager.unregisterListener(this);
     }
 
+    /**
+     * Listens for a SensorEvent when new sensor values are available.
+     * Update the corresponding array that stores the sensor data.
+     */
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor == mBarometer) {
@@ -116,6 +124,9 @@ public class GalaxySensorView extends Fragment implements SensorEventListener {
         }
     }
 
+    /**
+     * Listens for accuracy change of sensor.
+     */
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         if (sensor == mBarometer) {

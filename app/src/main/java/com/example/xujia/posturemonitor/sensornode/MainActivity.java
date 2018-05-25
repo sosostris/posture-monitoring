@@ -1,3 +1,7 @@
+/**
+ * Xujia Zhou. Copyright (c) 2018-02-25.
+ */
+
 package com.example.xujia.posturemonitor.sensornode;
 
 import android.Manifest;
@@ -16,7 +20,6 @@ import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
@@ -30,6 +33,10 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * MainActivity for setting up communication with sensor nodes as well as
+ * transmitting sensor data to Java TCP serve.
+ */
 public class MainActivity extends ViewPagerActivity {
 
     private static final String TAG = "MainActivity";
@@ -70,32 +77,10 @@ public class MainActivity extends ViewPagerActivity {
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle presses on the action bar items
-        switch (item.getItemId()) {
-            case android.R.id.home:
-                onBackPressed();
-                return true;
-            case R.id.opt_about:
-                onAbout();
-                break;
-            case R.id.opt_config_sys:
-                finish();
-                break;
-            case R.id.opt_exit:
-                Toast.makeText(this, "Exit...", Toast.LENGTH_SHORT).show();
-                finish();
-                break;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-        return true;
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Check if the application has location permissions
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -148,9 +133,13 @@ public class MainActivity extends ViewPagerActivity {
         super.onDestroy();
     }
 
+    /**
+     * Set the text on the "Scan/Stop scanning" button.
+     * Called when the "Scan/Stop scanning" button is clicked.
+     */
     public void onBtnClick(View view) {
         showBusyIndicator(mScanning);
-        mScanView.setButtonText(mScanning ? "Scan" : "Stop scanning");
+        mScanView.setScanButtonText(mScanning ? "Scan" : "Stop scanning");
         if (mScanning) {
             stopScan();
         } else {
@@ -158,17 +147,28 @@ public class MainActivity extends ViewPagerActivity {
         }
     }
 
+    /**
+     * Start scanning BLE devices.
+     */
     private void startScan() {
+        // Make sure the old information is deleted
         mDeviceInfoList.clear();
+        // Update list view
         mScanView.notifyDataSetChanged();
         scanLeDevice(true);
     }
 
+    /**
+     * Stop scanning.
+     */
     public void stopScan() {
         mScanning = false;
         scanLeDevice(false);
     }
 
+    /**
+     * Scan BLE devices.
+     */
     private boolean scanLeDevice(boolean enable) {
         if (enable) {
             mScanning = mBtAdapter.startLeScan(mLeScanCallback);
@@ -179,22 +179,28 @@ public class MainActivity extends ViewPagerActivity {
         return mScanning;
     }
 
-    // Device scan callback.
-    // NB! Nexus 4 and Nexus 7 (2012) only provide one scan result per scan
+    /**
+     * BLE device scan callback.
+     * NB! Nexus 4 and Nexus 7 (2012) only provide one scan result per scan
+     */
     private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
         public void onLeScan(final BluetoothDevice device, final int rssi, byte[] scanRecord) {
             runOnUiThread(new Runnable() {
                 public void run() {
+                    // If the BLE device does not already exist in the list view
                     if (!deviceInfoExists(device.getAddress())) {
+                        // Filter away all BLE devices that are not sensor nodes otherwise the list might be very long
                         if (deviceIsSensornodeOrSensortag(device)) {
-                            // New sensornode or sensortag
+                            // Get information of newly found sensornode or sensortag
                             String address = device.getAddress();
                             String deviceName = PostureMonitorApplication.ADDRESS_NAME_MAP.get(address);
                             String deviceType = PostureMonitorApplication.ADDRESS_TYPE_MAP.get(address);
                             String deviceBody = PostureMonitorApplication.ADDRESS_BODY_MAP.get(address);
                             BleDeviceInfo deviceInfo = createDeviceInfo(device, rssi, address, deviceName, deviceType, deviceBody);
+                            // Add the device to private member mDeviceInfoList
                             addDevice(deviceInfo);
                         }
+                        // If all sensor nodes have been found, alert user and stop scanning
                         if (mDeviceInfoList.size()== PostureMonitorApplication.NUMBER_OF_SENSORNODE) {
                             CustomToast.middleBottom(mThis, "All devices have been found.");
                             stopScan();
@@ -209,7 +215,7 @@ public class MainActivity extends ViewPagerActivity {
                             showBusyIndicator(true);
                         }
                     } else {
-                        // Already in list, update RSSI info
+                        // If the BLE device is already in the list view, update its RSSI info
                         BleDeviceInfo deviceInfo = findDeviceInfo(device);
                         deviceInfo.updateRssi(rssi);
                         mScanView.notifyDataSetChanged();
@@ -220,6 +226,9 @@ public class MainActivity extends ViewPagerActivity {
         }
     };
 
+    /**
+     * Check if the BLE device already exists in the list view.
+     */
     private boolean deviceInfoExists(String address) {
         for (int i = 0; i < mDeviceInfoList.size(); i++) {
             if (mDeviceInfoList.get(i).getBluetoothDevice().getAddress()
@@ -230,6 +239,9 @@ public class MainActivity extends ViewPagerActivity {
         return false;
     }
 
+    /**
+     * Check if the found BLE device is CC2650 sensortag or BLE113 sensornode
+     */
     private boolean deviceIsSensornodeOrSensortag(BluetoothDevice device) {
         String address = device.getAddress();
         for (String deviceAddress : PostureMonitorApplication.DEVICE_ADDRESS_LIST) {
@@ -240,19 +252,29 @@ public class MainActivity extends ViewPagerActivity {
         return false;
     }
 
-    private BleDeviceInfo createDeviceInfo(BluetoothDevice device, int rssi, String address, String name, String type, String body) {
+    /**
+     * Create a BleDeviceInfo object that stores information about a sensor node.
+     */
+    private BleDeviceInfo createDeviceInfo(
+            BluetoothDevice device, int rssi, String address, String name, String type, String body) {
         return new BleDeviceInfo(device, rssi, address, name, type, body);
     }
 
-    List<BleDeviceInfo> getDeviceInfoList() {
+    protected List<BleDeviceInfo> getDeviceInfoList() {
         return mDeviceInfoList;
     }
 
+    /**
+     * Add the found sensor node to private member mDeviceInfoList and update list view.
+     */
     private void addDevice(BleDeviceInfo device) {
         mDeviceInfoList.add(device);
         mScanView.notifyDataSetChanged();
     }
 
+    /**
+     * Find the corresponding BleDeviceInfo object of a BLE device.
+     */
     private BleDeviceInfo findDeviceInfo(BluetoothDevice device) {
         for (int i = 0; i < mDeviceInfoList.size(); i++) {
             if (mDeviceInfoList.get(i).getBluetoothDevice().getAddress()
@@ -263,6 +285,9 @@ public class MainActivity extends ViewPagerActivity {
         return null;
     }
 
+    /**
+     * Initialize the broadcast receiver that handles changed state of the local Bluetooth adapter.
+     */
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
 
         List <BluetoothGattCharacteristic> charList = new ArrayList<BluetoothGattCharacteristic>();
@@ -292,6 +317,9 @@ public class MainActivity extends ViewPagerActivity {
         }
     };
 
+    /**
+     * Initializes a TimerTask that broadcast the new sensor data to DeviceActivity.
+     */
     private void initBroadcastTimerTask() {
         timer = new Timer();
         timerTask = new TimerTask() {
@@ -313,23 +341,35 @@ public class MainActivity extends ViewPagerActivity {
         timer.schedule(timerTask, 1000, 500);
     }
 
+    /**
+     * Broadcast double[][] data.
+     */
     private void broadcastUpdate(final String action, final double[][] data) {
         final Intent intent = new Intent(action);
         // intent.putExtra(EXTRA_DATA, data);
         sendBroadcast(intent);
     }
 
+    /**
+     * Broadcast double[] data.
+     */
     private void broadcastUpdate(final String action, final double[] data) {
         final Intent intent = new Intent(action);
         // intent.putExtra(EXTRA_DATA, data);
         sendBroadcast(intent);
     }
 
+    /**
+     * Broadcast String[] data.
+     */
     private void broadcastUpdate(final String action, final String[] data) {
         final Intent intent = new Intent(action);
         sendBroadcast(intent);
     }
 
+    /**
+     * Handles result of location permission.
+     */
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
@@ -343,11 +383,6 @@ public class MainActivity extends ViewPagerActivity {
                 return;
             }
         }
-    }
-
-    private void onAbout() {
-        final Dialog dialog = new AboutDialog(this);
-        dialog.show();
     }
 
 }
