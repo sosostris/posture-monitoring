@@ -56,7 +56,14 @@ public class DelSnDialog extends DialogFragment {
                     public void onClick(DialogInterface dialog, int id) {
                         updateSnList();
                     }
-                });
+                })
+                .setNegativeButton("Cancel",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int whichButton) {
+                                dialog.dismiss();
+                            }
+                        }
+                );
         // Create the AlertDialog object and return it
         return builder.create();
     }

@@ -187,6 +187,7 @@ public class ConfigActivity extends ViewPagerActivity {
      * Handles downloading information of user's sensor nodes and updates the global variables in
      * application class, including number of sensors, sensor node Ids, sensor node MAC addresses,
      * sensor node currently configured wearing positions, sensor node types.
+     * This method sends a "sn" command over to start the above operations.
      */
     public void getSensornodes() {
         Thread worker = new Thread(new Runnable() {
@@ -209,6 +210,14 @@ public class ConfigActivity extends ViewPagerActivity {
                                         CustomToast.middleBottom(mThis, "You have no sensornodes!");
                                     }
                                 });
+                                PostureMonitorApplication.NUMBER_OF_SENSORNODE = 0;
+                                PostureMonitorApplication.DEVICE_NAME_LIST = null;
+                                PostureMonitorApplication.DEVICE_ADDRESS_LIST = null;
+                                PostureMonitorApplication.DEVICE_TYPE_LIST = null;
+                                PostureMonitorApplication.SN_BODY_LIST = null;
+                                clearDeviceMaps();
+                                mySensornodes = null;
+                                return;
                             } else {
                                 String[] parts = response.split(" ");
                                 if (parts[0].equals("nr")) {
@@ -303,6 +312,10 @@ public class ConfigActivity extends ViewPagerActivity {
             CustomToast.middleBottom(mThis, "Please connect to server first!");
             return;
         }
+        if (PostureMonitorApplication.NUMBER_OF_SENSORNODE == 0) {
+            CustomToast.middleBottom(mThis, "You have no sensor nodes!");
+            return;
+        }
         if (mConfigSnView == null) {
             mConfigSnView = new ConfigSnView();
             mSectionsPagerAdapter.addSection(mConfigSnView, "Config sensornodes");
@@ -314,6 +327,10 @@ public class ConfigActivity extends ViewPagerActivity {
      * Go to MainActivity to start using the sensor nodes.
      */
     public void gotoMain(View view) {
+        if (PostureMonitorApplication.NUMBER_OF_SENSORNODE == 0) {
+            CustomToast.middleBottom(mThis, "You have no sensor nodes!");
+            return;
+        }
         BluetoothLeService.myBluetoothGattCallbacks = new BluetoothLeService.MyBluetoothGattCallback[PostureMonitorApplication.NUMBER_OF_SENSORNODE];
         mMainIntent = new Intent(this, MainActivity.class);
         startActivityForResult(mMainIntent, -1);
@@ -350,8 +367,11 @@ public class ConfigActivity extends ViewPagerActivity {
      * Check method to see if the wearing positions are empty or properly configured.
      */
     public boolean allConfigured() {
+        if (PostureMonitorApplication.NUMBER_OF_SENSORNODE == 0) {
+            return false;
+        }
         for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
-            if (PostureMonitorApplication.SN_BODY_LIST[i] == null) {
+            if (PostureMonitorApplication.SN_BODY_LIST[i].equals("null")) {
                 return false;
             }
         }
@@ -439,6 +459,10 @@ public class ConfigActivity extends ViewPagerActivity {
             CustomToast.middleBottom(mThis, "Please connect to server first!");
             return;
         }
+        if (PostureMonitorApplication.NUMBER_OF_SENSORNODE == 0) {
+            CustomToast.middleBottom(mThis, "You have no sensor nodes to delete!");
+            return;
+        }
         DelSnDialog delSnDialog = new DelSnDialog(writer, reader, mThis);
         delSnDialog.show(getFragmentManager(), TAG);
     }
@@ -477,6 +501,14 @@ public class ConfigActivity extends ViewPagerActivity {
             PostureMonitorApplication.ADDRESS_BODY_MAP.put(PostureMonitorApplication.DEVICE_ADDRESS_LIST[i],
                     PostureMonitorApplication.SN_BODY_LIST[i]);
         }
+        mThis.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (allConfigured()) {
+                    mConfigView.showBtn("main");
+                }
+            }
+        });
     }
 
     /**
@@ -485,6 +517,21 @@ public class ConfigActivity extends ViewPagerActivity {
     private void updateMySnBodyList() {
         for (int i=0; i<PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
             mySensornodes[i].setBody(PostureMonitorApplication.SN_BODY_LIST[i]);
+        }
+    }
+
+    /**
+     * If user has no sensor node, clear device maps.
+     */
+    private void clearDeviceMaps() {
+        if (PostureMonitorApplication.ADDRESS_BODY_MAP != null) {
+            PostureMonitorApplication.ADDRESS_BODY_MAP.clear();
+        }
+        if (PostureMonitorApplication.ADDRESS_TYPE_MAP != null) {
+            PostureMonitorApplication.ADDRESS_TYPE_MAP.clear();
+        }
+        if (PostureMonitorApplication.ADDRESS_BODY_MAP != null) {
+            PostureMonitorApplication.ADDRESS_BODY_MAP.clear();
         }
     }
 

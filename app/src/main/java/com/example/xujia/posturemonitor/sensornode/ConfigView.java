@@ -49,6 +49,9 @@ public class ConfigView extends Fragment {
     // House-keeping
     private ConfigActivity mActivity;
 
+    // Whether user has sensor nodes or not
+    private boolean mNoSn;
+
     public ConfigView() {
         super();
     }
@@ -207,7 +210,8 @@ public class ConfigView extends Fragment {
     }
 
     /**
-     * The same method as getSensornodes() ConfigActivity.
+     * The same method as getSensornodes() ConfigActivity except that it is started
+     * without sending a "sn" command first.
      */
     private void getSensornodes(BufferedReader reader) {
         boolean waitingForNr = true;
@@ -226,6 +230,12 @@ public class ConfigView extends Fragment {
                                 CustomToast.middleBottom(mActivity, "You have no sensornodes!");
                             }
                         });
+                        mNoSn = true;
+                        waitingForNr = false;
+                        waitingForId = false;
+                        waitingForAd = false;
+                        waitingForBd = false;
+                        waitingForTy = false;
                     } else {
                         String[] parts = response.split(" ");
                         if (parts[0].equals("nr")) {
@@ -264,22 +274,24 @@ public class ConfigView extends Fragment {
         }
 
         // Generate a toast message to tell user about his/her sensor node information
-        String message = "You have " + PostureMonitorApplication.NUMBER_OF_SENSORNODE + " sensornodes.\n";
-        for (int i = 0; i < PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
-            message = message + PostureMonitorApplication.DEVICE_NAME_LIST[i] + " is at " + PostureMonitorApplication.SN_BODY_LIST[i] + "\n";
+        if (!mNoSn) {
+            // Update global variables in application class and mySensornodes in ConfigActivity
+            PostureMonitorApplication.generateDeviceMap();
+            mActivity.initMySensornodes();
+            mActivity.mSensornodeAcquired = true;
         }
 
-        // Update global variables in application class and mySensornodes in ConfigActivity
-        PostureMonitorApplication.generateDeviceMap();
-        mActivity.initMySensornodes();
-        mActivity.mSensornodeAcquired = true;
-
-        // Use UI thread to show the toast message and make the other configuration-related buttons visible
-        final String toastMessage = message;
         mActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(mActivity, toastMessage, Toast.LENGTH_LONG).show();
+                if (!mNoSn) {
+                    // Use UI thread to show the toast message and make the other configuration-related buttons visible
+                    String message = "You have " + PostureMonitorApplication.NUMBER_OF_SENSORNODE + " sensornodes.\n";
+                    for (int i = 0; i < PostureMonitorApplication.NUMBER_OF_SENSORNODE; i++) {
+                        message = message + PostureMonitorApplication.DEVICE_NAME_LIST[i] + " is at " + PostureMonitorApplication.SN_BODY_LIST[i] + "\n";
+                    }
+                    Toast.makeText(mActivity, message, Toast.LENGTH_LONG).show();
+                }
                 showBtn("config");
                 showBtn("add");
                 showBtn("del");
