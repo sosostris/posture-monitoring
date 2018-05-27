@@ -30,7 +30,6 @@ public class PostureMonitorApplication extends Application {
 
     private static final String TAG = "Application";
 
-    public static int NUMBER_OF_SENSORNODE;
     public static String JAVA_IP = null;    // 192.168.1.33
     public static int JAVA_PORT_STREAM = 8000;
     public static int JAVA_PORT_GENERAL = 8001;
@@ -38,6 +37,7 @@ public class PostureMonitorApplication extends Application {
     public static int MATLAB_PORT = 30000;
     public static String USERNAME = null;
     public static String USER_ID = null;
+    public static int NUMBER_OF_SENSORNODE;
     public static String[] DEVICE_ADDRESS_LIST = null;
     public static String[] DEVICE_NAME_LIST = null;
     public static String[] SN_BODY_LIST = null;
