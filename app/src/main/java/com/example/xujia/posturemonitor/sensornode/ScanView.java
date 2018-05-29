@@ -1101,8 +1101,18 @@ public class ScanView extends Fragment {
                             sb.append(currentPosture);
                             currentBaro[i] = -8888;
                             // Use the output stream to send data over
+                            // For some Android phones a new thread is needed here
+                            // if (btOut != null) {
+                            //     btOut.println(sb.toString());
+                            // }
                             if (btOut != null) {
-                                btOut.println(sb.toString());
+                                Thread javaWorker = new Thread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        btOut.println(sb.toString());
+                                    }
+                                });
+                                javaWorker.start();
                             }
                         }
                     }
