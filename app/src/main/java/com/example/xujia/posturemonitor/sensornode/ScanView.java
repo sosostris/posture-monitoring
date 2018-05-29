@@ -102,6 +102,8 @@ public class ScanView extends Fragment {
     public static PrintWriter btOut;
 
     // Raw bytes of sensor data to be streamed to MATLAB from DeviceActivity
+    // First dimension refers to the position of the sensor node in the list view
+    // Second dimension refers to the sequence of raw bytes, high byte, low byte, and so on
     public static int[] deviceModel;
     public static byte[][] currentAccelXByte;
     public static byte[][] currentAccelYByte;
