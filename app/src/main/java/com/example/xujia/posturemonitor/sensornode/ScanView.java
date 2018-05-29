@@ -76,11 +76,14 @@ public class ScanView extends Fragment {
     private IntentFilter mFilter;
 
     // Timer and TimeTask that uploads data and broadcast to DeviceActivity as a fixed interval
-    // Double arrays that stores sensor data to be uploaded to Bigtable as well as broadcast to DeviceActivity
     Timer timer;
     TimerTask timerTask;
     final Handler handler = new Handler();
     boolean streaming;
+
+    // Double arrays that stores sensor data to be uploaded to Bigtable as well as broadcast to DeviceActivity
+    // e.g. currentAccelX[0] is the first sensor node (in the list view)'s current accelerometer x-axis value,
+    // currentAccelX[1] is the second sensor node (in the list view)'s current accelrometer x-axis value.
     public static String[] currentBatteryLevel;
     public static double[] currentAccelX;
     public static double[] currentAccelY;

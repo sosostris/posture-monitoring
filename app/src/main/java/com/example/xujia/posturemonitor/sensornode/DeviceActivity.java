@@ -356,13 +356,34 @@ import java.net.Socket;
                 newData[4] = ScanView.currentBaroByte[position][2];
                 break;
         }
+        /**
+         * The following code worked for most Android phones but not for all.
+         */
+//        if (dos != null) {
+//            try {
+//                dos.write(newData);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
+
+        /**
+         * The following code should work for all Android phones.
+         */
         if (dos != null) {
-            try {
-                dos.write(newData);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            Thread matlabWorker = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        dos.write(newData);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            matlabWorker.start();
         }
+
     }
 
 
